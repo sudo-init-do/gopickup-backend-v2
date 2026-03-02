@@ -28,6 +28,11 @@ type User struct {
 	OTPCode      string `gorm:"type:varchar(6)"`
 	OTPExpiresAt time.Time
 
+	// Relations
+	ClientProfile *ClientProfile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	DriverProfile *DriverProfile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	VendorProfile *VendorProfile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`

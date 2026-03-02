@@ -22,7 +22,12 @@ func main() {
 
 	// Auto Migrate
 	log.Println("Running migrations...")
-	if err := db.GetDB().AutoMigrate(&models.User{}); err != nil {
+	if err := db.GetDB().AutoMigrate(
+		&models.User{},
+		&models.ClientProfile{},
+		&models.DriverProfile{},
+		&models.VendorProfile{},
+	); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
 

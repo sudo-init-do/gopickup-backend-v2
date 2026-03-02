@@ -228,31 +228,31 @@ Register/login + JWT + RBAC. OTP verification flips is_verified.
 
 ---
 
-## 5) Phase 3: Profiles + Admin Approval
+## 5) Phase 3: Profiles + Admin Approval [DONE]
 
 ### Goal
 Onboarding works for each role. Admin can approve drivers/vendors.
 
 ### Endpoints
-- [ ] POST /api/v1/profile/client (Client)
-- [ ] POST /api/v1/profile/driver (Driver)
-- [ ] POST /api/v1/profile/vendor (Vendor)
-- [ ] PUT  /api/v1/profile (Any)
+- [x] POST /api/v1/profile/client (Client)
+- [x] POST /api/v1/profile/driver (Driver)
+- [x] POST /api/v1/profile/vendor (Vendor)
+- [x] PUT  /api/v1/profile (Any)
 
 ### Add Admin endpoints (required even if not listed)
-- [ ] PATCH /api/v1/admin/drivers/:user_id/approve
-- [ ] PATCH /api/v1/admin/vendors/:user_id/approve
+- [x] PATCH /api/v1/admin/drivers/:user_id/approve
+- [x] PATCH /api/v1/admin/vendors/:user_id/approve
 
 ### Rules
 - driver/vendor cannot bid/sell until approved
 
 ### Done When
-- onboarding saves data correctly
-- approval gates are enforced
+- [x] onboarding saves data correctly
+- [x] approval gates are enforced
 
 ---
 
-## 6) Phase 4: Marketplace
+## 6) Phase 4: Marketplace [IN PROGRESS]
 
 ### Goal
 Vendor product CRUD + public browsing.
