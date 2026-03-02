@@ -25,13 +25,13 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	api := r.Group("/api/v1")
 	{
 		api.GET("/health", handlers.HealthCheck)
-		
+
 		authGroup := api.Group("/auth")
 		{
 			authGroup.POST("/register", authH.Register)
 			authGroup.POST("/login", authH.Login)
 			authGroup.POST("/verify-otp", authH.VerifyOTP)
-			
+
 			// Protected Routes
 			protected := authGroup.Group("/")
 			protected.Use(middleware.AuthMiddleware(cfg))

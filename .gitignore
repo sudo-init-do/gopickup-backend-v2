@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+*.env.local
 
 # Build
 dist/
@@ -19,3 +20,8 @@ main
 
 # Go
 vendor/
+
+# Databases
+*.db
+*.db-journal
+gopickup.db

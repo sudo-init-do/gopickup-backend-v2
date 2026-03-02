@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type AuthHandler struct {
@@ -62,11 +63,23 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 }
 
 func (h *AuthHandler) Me(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	role, _ := c.Get("role")
+	userIDValue, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"id":   userID,
-		"role": role,
-	})
+	userID, ok := userIDValue.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	me, err := h.service.Me(userID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, me)
 }

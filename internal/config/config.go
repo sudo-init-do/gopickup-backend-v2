@@ -10,6 +10,7 @@ import (
 type Config struct {
 	AppEnv         string
 	AppPort        string
+	DBDriver       string
 	DBHost         string
 	DBPort         string
 	DBUser         string
@@ -28,6 +29,7 @@ func LoadConfig() (*Config, error) {
 	config := &Config{
 		AppEnv:         getEnv("APP_ENV", "development"),
 		AppPort:        getEnv("APP_PORT", "8080"),
+		DBDriver:       getEnv("DB_DRIVER", "postgres"),
 		DBHost:         getEnv("DB_HOST", ""),
 		DBPort:         getEnv("DB_PORT", ""),
 		DBUser:         getEnv("DB_USER", ""),
@@ -40,21 +42,28 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Validate required variables
-	if config.DBHost == "" {
-		return nil, fmt.Errorf("DB_HOST is required")
+	if config.DBDriver == "postgres" {
+		if config.DBHost == "" {
+			return nil, fmt.Errorf("DB_HOST is required")
+		}
+		if config.DBPort == "" {
+			return nil, fmt.Errorf("DB_PORT is required")
+		}
+		if config.DBUser == "" {
+			return nil, fmt.Errorf("DB_USER is required")
+		}
+		if config.DBPassword == "" {
+			return nil, fmt.Errorf("DB_PASSWORD is required")
+		}
+		if config.DBName == "" {
+			return nil, fmt.Errorf("DB_NAME is required")
+		}
+	} else if config.DBDriver == "sqlite" {
+		if config.DBName == "" {
+			return nil, fmt.Errorf("DB_NAME is required for sqlite")
+		}
 	}
-	if config.DBPort == "" {
-		return nil, fmt.Errorf("DB_PORT is required")
-	}
-	if config.DBUser == "" {
-		return nil, fmt.Errorf("DB_USER is required")
-	}
-	if config.DBPassword == "" {
-		return nil, fmt.Errorf("DB_PASSWORD is required")
-	}
-	if config.DBName == "" {
-		return nil, fmt.Errorf("DB_NAME is required")
-	}
+
 	if config.PlunkAPIKey == "" {
 		return nil, fmt.Errorf("PLUNK_API_KEY is required")
 	}

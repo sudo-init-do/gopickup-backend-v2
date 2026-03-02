@@ -17,15 +17,15 @@ const (
 )
 
 type User struct {
-	ID           uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID           uuid.UUID `gorm:"type:uuid;primary_key"`
 	Email        string    `gorm:"uniqueIndex;not null"`
 	PasswordHash string    `gorm:"not null"`
 	Role         UserRole  `gorm:"type:varchar(20);not null"`
 	IsVerified   bool      `gorm:"default:false"`
 	FCMToken     *string   `gorm:"type:text"`
-	
+
 	// OTP fields
-	OTPCode      string    `gorm:"type:varchar(6)"`
+	OTPCode      string `gorm:"type:varchar(6)"`
 	OTPExpiresAt time.Time
 
 	CreatedAt time.Time
