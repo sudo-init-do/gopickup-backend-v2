@@ -252,39 +252,39 @@ Onboarding works for each role. Admin can approve drivers/vendors.
 
 ---
 
-## 6) Phase 4: Marketplace [IN PROGRESS]
+## 6) Phase 4: Marketplace [COMPLETED]
 
 ### Goal
 Vendor product CRUD + public browsing.
 
 ### Vendor endpoints
-- [ ] POST   /api/v1/vendor/products
-- [ ] PUT    /api/v1/vendor/products/:id
-- [ ] DELETE /api/v1/vendor/products/:id (soft delete preferred)
-- [ ] GET    /api/v1/vendor/dashboard
+- [x] POST   /api/v1/vendor/products
+- [x] PUT    /api/v1/vendor/products/:id
+- [x] DELETE /api/v1/vendor/products/:id (soft delete preferred)
+- [x] GET    /api/v1/vendor/dashboard
 
 ### Public endpoints
-- [ ] GET /api/v1/products (filters + pagination)
-- [ ] GET /api/v1/products/:id
-- [ ] GET /api/v1/vendors (filters + pagination)
+- [x] GET /api/v1/products (filters + pagination)
+- [x] GET /api/v1/products/:id
+- [x] GET /api/v1/vendors (filters + pagination)
 
 ### Done When
-- vendor CRUD works + ownership enforced
-- public list paginates and filters
+- [x] vendor CRUD works + ownership enforced
+- [x] public list paginates and filters
 
 ---
 
-## 7) Phase 5: Orders Lifecycle (State Machine)
+## 7) Phase 5: Orders Lifecycle (State Machine) [COMPLETED]
 
 ### Goal
 Checkout works + order status transitions enforced.
 
 ### Endpoints
-- [ ] POST  /api/v1/orders/checkout (Client)
-- [ ] GET   /api/v1/orders (role-aware)
-- [ ] GET   /api/v1/orders/:id (authorized actors only)
-- [ ] PATCH /api/v1/orders/:id/status (Vendor: pending->processing or cancel)
-- [ ] PATCH /api/v1/orders/:id/ready (Vendor: processing->searching_driver)
+- [x] POST  /api/v1/orders/checkout (Client)
+- [x] GET   /api/v1/orders (role-aware)
+- [x] GET   /api/v1/orders/:id (authorized actors only)
+- [x] PATCH /api/v1/orders/:id/status (Vendor: pending->processing or cancel)
+- [x] PATCH /api/v1/orders/:id/ready (Vendor: processing->searching_driver)
 
 ### State rules
 - pending -> processing OR cancelled
@@ -294,22 +294,22 @@ Checkout works + order status transitions enforced.
 - cancelled is terminal
 
 ### Done When
-- invalid transitions rejected
-- unauthorized users cannot view/modify orders
+- [x] invalid transitions rejected
+- [x] unauthorized users cannot view/modify orders
 
 ---
 
-## 8) Phase 6: Driver Jobs + Bidding
+## 8) Phase 6: Driver Jobs + Bidding [COMPLETED]
 
 ### Goal
 Driver sees nearby jobs (PostGIS), bids, client accepts safely.
 
 ### Endpoints
-- [ ] PATCH /api/v1/driver/location (Driver updates location)
-- [ ] GET   /api/v1/jobs/available (Driver; PostGIS radius)
-- [ ] POST  /api/v1/jobs/:order_id/bid (Driver)
-- [ ] GET   /api/v1/orders/:id/bids (Client)
-- [ ] POST  /api/v1/orders/:id/bids/:bid_id/accept (Client)
+- [x] PATCH /api/v1/driver/location (Driver updates location)
+- [x] GET   /api/v1/jobs/available (Driver; PostGIS radius)
+- [x] POST  /api/v1/jobs/:order_id/bid (Driver)
+- [x] GET   /api/v1/orders/:id/bids (Client)
+- [x] POST  /api/v1/orders/:id/bids/:bid_id/accept (Client)
 
 ### Transaction requirements
 Bid acceptance MUST be a DB transaction:
@@ -319,8 +319,8 @@ Bid acceptance MUST be a DB transaction:
 - set status transit
 
 ### Done When
-- only one driver can be assigned even under race conditions
-- new bids notify client (later via WS/FCM)
+- [x] only one driver can be assigned even under race conditions
+- [x] new bids notify client (later via WS/FCM)
 
 ---
 

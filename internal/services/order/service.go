@@ -234,3 +234,81 @@ func (s *OrderService) VendorMarkReady(vendorID uuid.UUID, orderID uuid.UUID) (*
 	}
 	return &o, nil
 }
+
+// GetBids returns all bids for a given order, ensuring the client owns it.
+func (s *OrderService) GetBids(clientID uuid.UUID, orderID uuid.UUID) ([]models.Bid, error) {
+	var o models.Order
+	if err := db.GetDB().First(&o, "id = ?", orderID).Error; err != nil {
+		return nil, err
+	}
+	if o.ClientID != clientID {
+		return nil, errors.New("forbidden")
+	}
+
+	var bids []models.Bid
+	if err := db.GetDB().Where("order_id = ?", orderID).Find(&bids).Error; err != nil {
+		return nil, err
+	}
+	return bids, nil
+}
+
+// AcceptBid assigns a driver to an order based on a bid.
+// It uses a transaction and optimistic locking (status check) to prevent race conditions.
+func (s *OrderService) AcceptBid(clientID uuid.UUID, orderID uuid.UUID, bidID uuid.UUID) (*models.Order, error) {
+	var order models.Order
+
+	err := db.GetDB().Transaction(func(tx *gorm.DB) error {
+		// 1. Fetch order to verify ownership
+		if err := tx.First(&order, "id = ?", orderID).Error; err != nil {
+			return err
+		}
+		if order.ClientID != clientID {
+			return errors.New("forbidden")
+		}
+
+		// 2. Fetch bid
+		var bid models.Bid
+		if err := tx.First(&bid, "id = ?", bidID).Error; err != nil {
+			return err
+		}
+		if bid.OrderID != orderID {
+			return errors.New("bid does not belong to this order")
+		}
+
+		// 3. Update Order atomically (Race Condition Safety)
+		// We use Where("status = ?", OrderSearchingDriver) to ensure it hasn't been taken by another request.
+		res := tx.Model(&models.Order{}).
+			Where("id = ? AND status = ?", orderID, models.OrderSearchingDriver).
+			Updates(map[string]interface{}{
+				"status":    models.OrderAssigned,
+				"driver_id": bid.DriverID,
+			})
+
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errors.New("order is no longer available for assignment")
+		}
+
+		// 4. Mark Bid as Accepted
+		if err := tx.Model(&bid).Update("status", models.BidAccepted).Error; err != nil {
+			return err
+		}
+
+		// 5. Reject all other bids for this order
+		if err := tx.Model(&models.Bid{}).
+			Where("order_id = ? AND id != ?", orderID, bidID).
+			Update("status", models.BidRejected).Error; err != nil {
+			return err
+		}
+
+		// Refresh order object with new status/driver
+		return tx.First(&order, "id = ?", orderID).Error
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return &order, nil
+}

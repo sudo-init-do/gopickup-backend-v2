@@ -13,8 +13,36 @@ const (
 	OrderPending         OrderStatus = "pending"
 	OrderProcessing      OrderStatus = "processing"
 	OrderSearchingDriver OrderStatus = "searching_driver"
+	OrderAssigned        OrderStatus = "assigned"
+	OrderPickedUp        OrderStatus = "picked_up"
+	OrderDelivered       OrderStatus = "delivered"
 	OrderCancelled       OrderStatus = "cancelled"
 )
+
+type BidStatus string
+
+const (
+	BidPending  BidStatus = "pending"
+	BidAccepted BidStatus = "accepted"
+	BidRejected BidStatus = "rejected"
+)
+
+type Bid struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey"`
+	OrderID   uuid.UUID `gorm:"type:uuid;not null;index"`
+	DriverID  uuid.UUID `gorm:"type:uuid;not null;index"`
+	Amount    float64   `gorm:"type:decimal(10,2);not null"`
+	Status    BidStatus `gorm:"type:varchar(20);default:'pending'"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (b *Bid) BeforeCreate(tx *gorm.DB) (err error) {
+	if b.ID == uuid.Nil {
+		b.ID = uuid.New()
+	}
+	return
+}
 
 type PaymentMethod string
 
@@ -38,6 +66,7 @@ type Order struct {
 	Status             OrderStatus `gorm:"type:varchar(30);not null;index"`
 
 	Items []OrderItem `gorm:"foreignKey:OrderID"`
+	Bids  []Bid       `gorm:"foreignKey:OrderID"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

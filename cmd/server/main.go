@@ -30,6 +30,7 @@ func main() {
 		&models.Product{},
 		&models.Order{},
 		&models.OrderItem{},
+		&models.Bid{},
 	); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}

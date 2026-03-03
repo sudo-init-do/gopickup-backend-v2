@@ -91,6 +91,50 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, o)
 }
 
+func (h *OrderHandler) GetBids(c *gin.Context) {
+	userIDInf, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+	bids, err := h.service.GetBids(userIDInf.(uuid.UUID), orderID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, bids)
+}
+
+func (h *OrderHandler) AcceptBid(c *gin.Context) {
+	userIDInf, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+	bidID, err := uuid.Parse(c.Param("bid_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid bid id"})
+		return
+	}
+
+	order, err := h.service.AcceptBid(userIDInf.(uuid.UUID), orderID, bidID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, order)
+}
+
 func (h *OrderHandler) VendorUpdateStatus(c *gin.Context) {
 	userIDInf, ok := c.Get("userID")
 	if !ok {

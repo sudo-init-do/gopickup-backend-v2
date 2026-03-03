@@ -11,9 +11,11 @@ import (
 	"gopickup/internal/services/auth"
 	"gopickup/internal/services/email"
 	orderHandler "gopickup/internal/http/handlers/order"
+	driverHandler "gopickup/internal/http/handlers/driver"
 	"gopickup/internal/services/order"
 	"gopickup/internal/services/profile"
 	"gopickup/internal/services/product"
+	"gopickup/internal/services/driver"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,12 +29,14 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	profileService := profile.NewProfileService(emailService)
 	productService := product.NewProductService()
 	orderService := order.NewOrderService()
+	driverService := driver.NewDriverService()
 
 	// Handlers
 	authH := authHandler.NewAuthHandler(authService)
 	profileH := profileHandler.NewProfileHandler(profileService)
 	productH := productHandler.NewProductHandler(productService)
 	orderH := orderHandler.NewOrderHandler(orderService)
+	driverH := driverHandler.NewDriverHandler(driverService)
 
 	// Public Routes
 	api := r.Group("/api/v1")
@@ -50,7 +54,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		}
 
 		// Protected Routes
-		protected := api.Group("/")
+		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware(cfg))
 		{
 			protected.GET("/auth/me", authH.Me)
@@ -71,6 +75,22 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			clientGroup.Use(middleware.RoleMiddleware(string(models.RoleClient)))
 			{
 				clientGroup.POST("/checkout", orderH.Checkout)
+				clientGroup.GET("/:id/bids", orderH.GetBids)
+				clientGroup.POST("/:id/bids/:bid_id/accept", orderH.AcceptBid)
+			}
+
+			// Driver Routes
+			driverGroup := protected.Group("/driver")
+			driverGroup.Use(middleware.RoleMiddleware(string(models.RoleDriver)))
+			{
+				driverGroup.PATCH("/location", driverH.UpdateLocation)
+			}
+
+			jobsGroup := protected.Group("/jobs")
+			jobsGroup.Use(middleware.RoleMiddleware(string(models.RoleDriver)))
+			{
+				jobsGroup.GET("/available", driverH.GetAvailableJobs)
+				jobsGroup.POST("/:order_id/bid", driverH.PlaceBid)
 			}
 
 			// Admin Routes
