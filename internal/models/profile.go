@@ -56,6 +56,7 @@ type VendorProfile struct {
 	Address        string    `gorm:"not null"`
 	StoreBannerURL *string
 	IsApproved     bool      `gorm:"default:false"`
+	Products       []Product `gorm:"foreignKey:VendorID"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

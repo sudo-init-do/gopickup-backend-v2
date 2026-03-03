@@ -27,6 +27,7 @@ func main() {
 		&models.ClientProfile{},
 		&models.DriverProfile{},
 		&models.VendorProfile{},
+		&models.Product{},
 	); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
