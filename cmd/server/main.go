@@ -28,6 +28,8 @@ func main() {
 		&models.DriverProfile{},
 		&models.VendorProfile{},
 		&models.Product{},
+		&models.Order{},
+		&models.OrderItem{},
 	); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}

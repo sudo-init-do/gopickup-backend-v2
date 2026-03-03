@@ -10,6 +10,8 @@ import (
 	"gopickup/internal/models"
 	"gopickup/internal/services/auth"
 	"gopickup/internal/services/email"
+	orderHandler "gopickup/internal/http/handlers/order"
+	"gopickup/internal/services/order"
 	"gopickup/internal/services/profile"
 	"gopickup/internal/services/product"
 
@@ -24,11 +26,13 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	authService := auth.NewAuthService(emailService, cfg)
 	profileService := profile.NewProfileService(emailService)
 	productService := product.NewProductService()
+	orderService := order.NewOrderService()
 
 	// Handlers
 	authH := authHandler.NewAuthHandler(authService)
 	profileH := profileHandler.NewProfileHandler(profileService)
 	productH := productHandler.NewProductHandler(productService)
+	orderH := orderHandler.NewOrderHandler(orderService)
 
 	// Public Routes
 	api := r.Group("/api/v1")
@@ -50,6 +54,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		protected.Use(middleware.AuthMiddleware(cfg))
 		{
 			protected.GET("/auth/me", authH.Me)
+			protected.GET("/orders", orderH.ListOrders)
+			protected.GET("/orders/:id", orderH.GetOrder)
 
 			// Profile Routes
 			profileGroup := protected.Group("/profile")
@@ -58,6 +64,13 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				profileGroup.POST("/driver", middleware.RoleMiddleware(string(models.RoleDriver)), profileH.CreateDriver)
 				profileGroup.POST("/vendor", middleware.RoleMiddleware(string(models.RoleVendor)), profileH.CreateVendor)
 				profileGroup.PUT("/", profileH.UpdateProfile)
+			}
+
+			// Client Routes
+			clientGroup := protected.Group("/orders")
+			clientGroup.Use(middleware.RoleMiddleware(string(models.RoleClient)))
+			{
+				clientGroup.POST("/checkout", orderH.Checkout)
 			}
 
 			// Admin Routes
@@ -76,6 +89,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				vendorGroup.PUT("/products/:id", productH.UpdateProduct)
 				vendorGroup.DELETE("/products/:id", productH.DeleteProduct)
 				vendorGroup.GET("/dashboard", productH.GetVendorDashboard)
+				vendorGroup.PATCH("/orders/:id/status", orderH.VendorUpdateStatus)
+				vendorGroup.PATCH("/orders/:id/ready", orderH.VendorMarkReady)
 			}
 		}
 	}
