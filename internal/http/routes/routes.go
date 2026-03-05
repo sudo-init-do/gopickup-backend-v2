@@ -16,6 +16,9 @@ import (
 	"gopickup/internal/services/profile"
 	"gopickup/internal/services/product"
 	"gopickup/internal/services/driver"
+	"gopickup/internal/services/notification"
+	wsHandler "gopickup/internal/http/handlers/websocket"
+	"gopickup/internal/db"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,6 +33,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	productService := product.NewProductService()
 	orderService := order.NewOrderService()
 	driverService := driver.NewDriverService()
+	notifService := notification.NewNotificationService(db.GetDB())
 
 	// Handlers
 	authH := authHandler.NewAuthHandler(authService)
@@ -37,11 +41,14 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	productH := productHandler.NewProductHandler(productService)
 	orderH := orderHandler.NewOrderHandler(orderService)
 	driverH := driverHandler.NewDriverHandler(driverService)
+	wsH := wsHandler.NewHandler(notifService, orderService, driverService, db.GetDB(), cfg)
 
 	// Public Routes
 	api := r.Group("/api/v1")
 	{
 		api.GET("/health", handlers.HealthCheck)
+		api.GET("/ws", wsH.HandleConnection) // WebSocket Endpoint
+
 		api.GET("/products", productH.ListProducts)
 		api.GET("/products/:id", productH.GetProduct)
 		api.GET("/vendors", productH.ListVendors)
@@ -98,7 +105,12 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			adminGroup.Use(middleware.AdminMiddleware())
 			{
 				adminGroup.PATCH("/drivers/:user_id/approve", profileH.ApproveDriver)
-				adminGroup.PATCH("/vendors/:user_id/approve", profileH.ApproveVendor)
+			}
+
+			// Notification Routes
+			notifGroup := protected.Group("/notifications")
+			{
+				notifGroup.PUT("/fcm-token", wsH.UpdateFCMToken)
 			}
 
 			// Vendor Routes

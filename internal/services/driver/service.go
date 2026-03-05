@@ -4,6 +4,7 @@ import (
 	"errors"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
+	"gopickup/internal/services/notification"
 
 	"github.com/google/uuid"
 )
@@ -71,6 +72,8 @@ func (s *DriverService) PlaceBid(driverID uuid.UUID, orderID uuid.UUID, amount f
 		if err := db.GetDB().Save(&existingBid).Error; err != nil {
 			return nil, err
 		}
+		// Notify client about updated bid
+		notification.GetService().NotifyNewBid(order.ClientID, order.ID, existingBid.Amount)
 		return &existingBid, nil
 	}
 
@@ -83,5 +86,7 @@ func (s *DriverService) PlaceBid(driverID uuid.UUID, orderID uuid.UUID, amount f
 	if err := db.GetDB().Create(bid).Error; err != nil {
 		return nil, err
 	}
+	// Notify client about new bid
+	notification.GetService().NotifyNewBid(order.ClientID, order.ID, bid.Amount)
 	return bid, nil
 }

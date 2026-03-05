@@ -341,7 +341,7 @@ Funding, webhook, withdrawal.
 
 ---
 
-## 10) Phase 8: Realtime (WebSockets) + Push (FCM)
+## 10) Phase 8: Realtime (WebSockets) + Push (FCM) [COMPLETED]
 
 ### Goal
 Rooms + events exactly as spec. FCM alongside key events.
@@ -352,19 +352,19 @@ Rooms + events exactly as spec. FCM alongside key events.
 - chat:{chat_id}
 
 ### Client -> Server events
-- driver_location_update {lat,lng,order_id} every 10s in transit
-- chat_message {chat_id,text}
+- [x] driver_location_update {lat,lng,order_id} every 10s in transit
+- [x] chat_message {chat_id,text}
 
 ### Server -> Client events
-- order_status_updated
-- new_bid
-- bid_accepted
-- driver_moved
-- new_message
+- [x] order_status_updated
+- [x] new_bid
+- [x] bid_accepted
+- [x] driver_moved
+- [x] new_message
 
 ### Done When
-- events broadcast correctly
-- FCM also sent for bid/status/message when app closed
+- [x] events broadcast correctly
+- [x] FCM also sent for bid/status/message when app closed
 
 ---
 

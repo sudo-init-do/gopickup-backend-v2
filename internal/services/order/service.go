@@ -4,6 +4,7 @@ import (
 	"errors"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
+	"gopickup/internal/services/notification"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -213,6 +214,7 @@ func (s *OrderService) VendorUpdateStatus(vendorID uuid.UUID, orderID uuid.UUID,
 	if err := db.GetDB().Save(&o).Error; err != nil {
 		return nil, err
 	}
+	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
 	return &o, nil
 }
 
@@ -232,6 +234,7 @@ func (s *OrderService) VendorMarkReady(vendorID uuid.UUID, orderID uuid.UUID) (*
 	if err := db.GetDB().Save(&o).Error; err != nil {
 		return nil, err
 	}
+	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
 	return &o, nil
 }
 
@@ -310,5 +313,13 @@ func (s *OrderService) AcceptBid(clientID uuid.UUID, orderID uuid.UUID, bidID uu
 	if err != nil {
 		return nil, err
 	}
+
+	// Notifications
+	ns := notification.GetService()
+	if order.DriverID != nil {
+		ns.NotifyBidAccepted(*order.DriverID, order.ID)
+	}
+	ns.NotifyOrderStatusUpdate(order.ID, order.Status, order.ClientID, order.VendorID, order.DriverID)
+
 	return &order, nil
 }

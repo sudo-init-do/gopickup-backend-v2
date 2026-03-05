@@ -31,6 +31,8 @@ func main() {
 		&models.Order{},
 		&models.OrderItem{},
 		&models.Bid{},
+		&models.Chat{},
+		&models.Message{},
 	); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
