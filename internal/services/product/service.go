@@ -1,21 +1,26 @@
 package product
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"gopickup/internal/services/audit"
 	"math"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type ProductService struct {
 	audit *audit.AuditService
+	redis *redis.Client
 }
 
-func NewProductService(audit *audit.AuditService) *ProductService {
-	return &ProductService{audit: audit}
+func NewProductService(audit *audit.AuditService, redis *redis.Client) *ProductService {
+	return &ProductService{audit: audit, redis: redis}
 }
 
 // DTOs
@@ -150,6 +155,11 @@ func (s *ProductService) UpdateProduct(vendorID uuid.UUID, productID uuid.UUID, 
 
 	s.audit.Log(vendorID, "PRODUCT_UPDATED", "product", product.ID, nil)
 
+	// Invalidate cache
+	if s.redis != nil {
+		s.redis.Del(context.Background(), "product:"+product.ID.String())
+	}
+
 	return &product, nil
 }
 
@@ -178,6 +188,9 @@ func (s *ProductService) DeleteProduct(vendorID uuid.UUID, productID uuid.UUID) 
 	err := db.DB.Delete(&product).Error
 	if err == nil {
 		s.audit.Log(vendorID, "PRODUCT_DELETED", "product", product.ID, nil)
+		if s.redis != nil {
+			s.redis.Del(context.Background(), "product:"+product.ID.String())
+		}
 	}
 	return err
 }
@@ -225,8 +238,15 @@ func (s *ProductService) ListProducts(filter ProductFilter) (*PaginatedResponse,
 		query = query.Where("vendor_id = ?", *filter.VendorID)
 	}
 	if filter.Search != nil && *filter.Search != "" {
-		search := "%" + *filter.Search + "%"
-		query = query.Where("name LIKE ? OR description LIKE ?", search, search)
+		if db.DB.Dialector.Name() == "postgres" {
+			// Use Full Text Search for PostgreSQL
+			// websearch_to_tsquery is safer for user input than to_tsquery
+			query = query.Where("to_tsvector('english', name || ' ' || coalesce(description, '')) @@ websearch_to_tsquery('english', ?)", *filter.Search)
+		} else {
+			// Fallback for SQLite or other DBs
+			search := "%" + *filter.Search + "%"
+			query = query.Where("name LIKE ? OR description LIKE ?", search, search)
+		}
 	}
 
 	// Count Total
@@ -268,10 +288,33 @@ func (s *ProductService) ListProducts(filter ProductFilter) (*PaginatedResponse,
 }
 
 func (s *ProductService) GetProduct(id uuid.UUID) (*models.Product, error) {
+	key := "product:" + id.String()
+	ctx := context.Background()
+
+	// 1. Try Redis
+	if s.redis != nil {
+		val, err := s.redis.Get(ctx, key).Result()
+		if err == nil {
+			var product models.Product
+			if err := json.Unmarshal([]byte(val), &product); err == nil {
+				return &product, nil
+			}
+		}
+	}
+
+	// 2. Fetch from DB
 	var product models.Product
 	if err := db.DB.Preload("Vendor").First(&product, id).Error; err != nil {
 		return nil, errors.New("product not found")
 	}
+
+	// 3. Cache in Redis
+	if s.redis != nil {
+		if data, err := json.Marshal(product); err == nil {
+			s.redis.Set(ctx, key, data, time.Hour)
+		}
+	}
+
 	return &product, nil
 }
 
@@ -298,6 +341,9 @@ func (s *ProductService) ListVendors(filter VendorFilter) (*PaginatedResponse, e
 	limit := filter.Limit
 	if limit <= 0 {
 		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
 	}
 
 	page := filter.Page

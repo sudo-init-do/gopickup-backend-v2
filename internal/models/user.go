@@ -19,23 +19,23 @@ const (
 type User struct {
 	ID           uuid.UUID `gorm:"type:uuid;primary_key"`
 	Email        string    `gorm:"uniqueIndex;not null"`
-	PasswordHash string    `gorm:"not null"`
+	PasswordHash string    `gorm:"not null" json:"-"`
 	Role         UserRole  `gorm:"type:varchar(20);not null"`
 	IsVerified   bool      `gorm:"default:false"`
 	FCMToken     *string   `gorm:"type:text"`
 
 	// OTP fields
-	OTPCode      string `gorm:"type:varchar(6)"`
-	OTPExpiresAt time.Time
+	OTPCode      string    `gorm:"type:varchar(6)" json:"-"`
+	OTPExpiresAt time.Time `json:"-"`
 
 	// Relations
-	ClientProfile *ClientProfile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	DriverProfile *DriverProfile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	VendorProfile *VendorProfile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	ClientProfile *ClientProfile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	DriverProfile *DriverProfile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	VendorProfile *VendorProfile `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	DeletedAt *time.Time `gorm:"index"`
 }
 
 // BeforeCreate hook to generate UUID if not present (though default:gen_random_uuid() handles it in DB,

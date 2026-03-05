@@ -23,6 +23,7 @@ type Config struct {
 	JWTSecret      string
 	CorsOrigins    string
 	MetricsEnabled bool
+	RedisURL       string
 }
 
 func LoadConfig() (*Config, error) {
@@ -45,6 +46,7 @@ func LoadConfig() (*Config, error) {
 		JWTSecret:      getEnv("JWT_SECRET", ""),
 		CorsOrigins:    getEnv("CORS_ALLOW_ORIGINS", "*"),
 		MetricsEnabled: getEnv("ENABLE_METRICS", "false") == "true",
+		RedisURL:       getEnv("REDIS_URL", "redis://localhost:6379/0"),
 	}
 
 	// Validate required variables

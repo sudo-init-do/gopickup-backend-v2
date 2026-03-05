@@ -11,9 +11,9 @@ type Product struct {
 	ID            uuid.UUID     `gorm:"type:uuid;primaryKey"`
 	VendorID      uuid.UUID     `gorm:"type:uuid;not null;index"`
 	Vendor        VendorProfile `gorm:"foreignKey:VendorID;references:UserID"` // Association
-	Name          string        `gorm:"not null"`
+	Name          string        `gorm:"not null;index"` // Indexed for search
 	Description   string        `gorm:"type:text"`
-	Price         float64       `gorm:"type:decimal(10,2);not null;check:price >= 0"`
+	Price         float64       `gorm:"type:decimal(10,2);not null;check:price >= 0;index"` // Indexed for filtering
 	Category      string        `gorm:"not null;index"`
 	StockQuantity int           `gorm:"not null;check:stock_quantity >= 0"`
 	ImageURL      string
@@ -21,7 +21,7 @@ type Product struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	DeletedAt *time.Time `gorm:"index"`
 }
 
 // Ensure database constraints are applied

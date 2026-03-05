@@ -19,7 +19,7 @@ type Chat struct {
 
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+	DeletedAt *time.Time     `gorm:"index" json:"deleted_at"`
 }
 
 func (c *Chat) BeforeCreate(tx *gorm.DB) (err error) {
@@ -34,11 +34,11 @@ type Message struct {
 	ChatID   uuid.UUID `gorm:"type:uuid;not null;index" json:"chat_id"`
 	SenderID uuid.UUID `gorm:"type:uuid;not null;index" json:"sender_id"`
 	Content  string    `gorm:"type:text;not null" json:"content"`
-	IsRead   bool      `gorm:"default:false" json:"is_read"`
+	IsRead   bool      `gorm:"default:false;index" json:"is_read"` // Indexed for unread count
 
-	CreatedAt time.Time      `json:"created_at"`
+	CreatedAt time.Time      `gorm:"index" json:"created_at"` // Indexed for sorting
 	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+	DeletedAt *time.Time     `gorm:"index" json:"deleted_at"`
 }
 
 func (m *Message) BeforeCreate(tx *gorm.DB) (err error) {

@@ -68,9 +68,9 @@ type Order struct {
 	Items []OrderItem `gorm:"foreignKey:OrderID"`
 	Bids  []Bid       `gorm:"foreignKey:OrderID"`
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	CreatedAt          time.Time   `gorm:"index"` // Indexed for sorting
+	UpdatedAt          time.Time
+	DeletedAt          *time.Time  `gorm:"index"`
 }
 
 func (o *Order) BeforeCreate(tx *gorm.DB) (err error) {
@@ -90,7 +90,7 @@ type OrderItem struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	DeletedAt *time.Time `gorm:"index"`
 }
 
 func (oi *OrderItem) BeforeCreate(tx *gorm.DB) (err error) {

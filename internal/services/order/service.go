@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type CheckoutItem struct {
@@ -39,50 +40,51 @@ func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*model
 		return nil, errors.New("no items")
 	}
 
-	var products []models.Product
 	productIDs := make([]uuid.UUID, 0, len(req.Items))
 	for _, it := range req.Items {
 		productIDs = append(productIDs, it.ProductID)
 	}
 
-	err := db.GetDB().Where("id IN ?", productIDs).Find(&products).Error
-	if err != nil {
-		return nil, err
-	}
-	if len(products) != len(req.Items) {
-		return nil, errors.New("some products not found")
-	}
-
-	// Validate active and stock, and ensure single vendor
-	var vendorID uuid.UUID
-	total := 0.0
-	for _, it := range req.Items {
-		var p *models.Product
-		for i := range products {
-			if products[i].ID == it.ProductID {
-				p = &products[i]
-				break
-			}
-		}
-		if p == nil {
-			return nil, errors.New("product missing")
-		}
-		if !p.IsActive {
-			return nil, errors.New("product not active")
-		}
-		if p.StockQuantity < it.Quantity {
-			return nil, errors.New("insufficient stock")
-		}
-		if vendorID == uuid.Nil {
-			vendorID = p.VendorID
-		} else if vendorID != p.VendorID {
-			return nil, errors.New("mixed vendor items not allowed")
-		}
-		total += p.Price * float64(it.Quantity)
-	}
-
 	var order *models.Order
-	err = db.GetDB().Transaction(func(tx *gorm.DB) error {
+	err := db.GetDB().Transaction(func(tx *gorm.DB) error {
+		var products []models.Product
+		// PERFORMANCE/SAFETY: Use FOR UPDATE to lock product rows and prevent race conditions on stock
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", productIDs).Find(&products).Error; err != nil {
+			return err
+		}
+
+		if len(products) != len(req.Items) {
+			return errors.New("some products not found")
+		}
+
+		// Validate active and stock, and ensure single vendor
+		var vendorID uuid.UUID
+		total := 0.0
+		for _, it := range req.Items {
+			var p *models.Product
+			for i := range products {
+				if products[i].ID == it.ProductID {
+					p = &products[i]
+					break
+				}
+			}
+			if p == nil {
+				return errors.New("product missing")
+			}
+			if !p.IsActive {
+				return errors.New("product not active")
+			}
+			if p.StockQuantity < it.Quantity {
+				return errors.New("insufficient stock")
+			}
+			if vendorID == uuid.Nil {
+				vendorID = p.VendorID
+			} else if vendorID != p.VendorID {
+				return errors.New("mixed vendor items not allowed")
+			}
+			total += p.Price * float64(it.Quantity)
+		}
+
 		o := &models.Order{
 			ClientID:           clientID,
 			VendorID:           vendorID,
@@ -97,6 +99,7 @@ func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*model
 		if err := tx.Create(o).Error; err != nil {
 			return err
 		}
+
 		items := make([]models.OrderItem, 0, len(req.Items))
 		for _, it := range req.Items {
 			var p *models.Product
@@ -128,6 +131,10 @@ func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*model
 	if err != nil {
 		return nil, err
 	}
+
+	s.audit.Log(clientID, "ORDER_CREATED", "order", order.ID, map[string]interface{}{"total": order.TotalProductAmount})
+	notification.GetService().NotifyOrderStatusUpdate(order.ID, order.Status, order.ClientID, order.VendorID, order.DriverID)
+
 	return order, nil
 }
 
@@ -138,6 +145,10 @@ func (s *OrderService) ListOrders(userID uuid.UUID, role models.UserRole, page, 
 	}
 	if limit <= 0 {
 		limit = 10
+	}
+	// Enforce max limit for performance safety
+	if limit > 100 {
+		limit = 100
 	}
 	offset := (page - 1) * limit
 	var orders []models.Order
@@ -213,6 +224,14 @@ func (s *OrderService) VendorUpdateStatus(vendorID uuid.UUID, orderID uuid.UUID,
 	default:
 		return nil, errors.New("invalid transition")
 	}
+
+	// Handle stock restoration on cancellation
+	if next == models.OrderCancelled {
+		if err := s.restoreStock(o.ID); err != nil {
+			return nil, err
+		}
+	}
+
 	o.Status = next
 	if err := db.GetDB().Save(&o).Error; err != nil {
 		return nil, err
@@ -220,6 +239,61 @@ func (s *OrderService) VendorUpdateStatus(vendorID uuid.UUID, orderID uuid.UUID,
 	s.audit.Log(vendorID, "ORDER_STATUS_CHANGED", "order", o.ID, map[string]interface{}{"status": next})
 	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
 	return &o, nil
+}
+
+// Client cancels an order (only if pending)
+func (s *OrderService) ClientCancelOrder(clientID uuid.UUID, orderID uuid.UUID) (*models.Order, error) {
+	var o models.Order
+	err := db.GetDB().Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&o, "id = ?", orderID).Error; err != nil {
+			return err
+		}
+		if o.ClientID != clientID {
+			return errors.New("forbidden")
+		}
+		if o.Status != models.OrderPending {
+			return errors.New("cannot cancel non-pending order")
+		}
+
+		// Restore stock
+		if err := s.restoreStockTx(tx, o.ID); err != nil {
+			return err
+		}
+
+		o.Status = models.OrderCancelled
+		if err := tx.Save(&o).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	s.audit.Log(clientID, "ORDER_CANCELLED", "order", o.ID, nil)
+	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
+	return &o, nil
+}
+
+// Helper to restore stock
+func (s *OrderService) restoreStock(orderID uuid.UUID) error {
+	return db.GetDB().Transaction(func(tx *gorm.DB) error {
+		return s.restoreStockTx(tx, orderID)
+	})
+}
+
+func (s *OrderService) restoreStockTx(tx *gorm.DB, orderID uuid.UUID) error {
+	var items []models.OrderItem
+	if err := tx.Where("order_id = ?", orderID).Find(&items).Error; err != nil {
+		return err
+	}
+	for _, item := range items {
+		if err := tx.Model(&models.Product{}).Where("id = ?", item.ProductID).
+			Update("stock_quantity", gorm.Expr("stock_quantity + ?", item.Quantity)).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Vendor marks ready: processing -> searching_driver.
@@ -267,7 +341,8 @@ func (s *OrderService) AcceptBid(clientID uuid.UUID, orderID uuid.UUID, bidID uu
 
 	err := db.GetDB().Transaction(func(tx *gorm.DB) error {
 		// 1. Fetch order to verify ownership
-		if err := tx.First(&order, "id = ?", orderID).Error; err != nil {
+		// Add Locking to prevent concurrent updates
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, "id = ?", orderID).Error; err != nil {
 			return err
 		}
 		if order.ClientID != clientID {

@@ -1,23 +1,29 @@
 package profile
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"gopickup/internal/services/email"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type ProfileService struct {
 	emailService email.EmailService
+	redis        *redis.Client
 }
 
-func NewProfileService(emailService email.EmailService) *ProfileService {
+func NewProfileService(emailService email.EmailService, redis *redis.Client) *ProfileService {
 	return &ProfileService{
 		emailService: emailService,
+		redis:        redis,
 	}
 }
 
@@ -242,6 +248,11 @@ func (s *ProfileService) ApproveDriver(driverID uuid.UUID) error {
 		return err
 	}
 
+	// Invalidate cache
+	if s.redis != nil {
+		s.redis.Del(context.Background(), fmt.Sprintf("profile:%s:%s", driverID, models.RoleDriver))
+	}
+
 	// Send notification email
 	var user models.User
 	if err := db.DB.First(&user, driverID).Error; err == nil {
@@ -273,6 +284,11 @@ func (s *ProfileService) ApproveVendor(vendorID uuid.UUID) error {
 	profile.IsApproved = true
 	if err := db.DB.Save(&profile).Error; err != nil {
 		return err
+	}
+
+	// Invalidate cache
+	if s.redis != nil {
+		s.redis.Del(context.Background(), fmt.Sprintf("profile:%s:%s", vendorID, models.RoleVendor))
 	}
 
 	// Send notification email
@@ -344,16 +360,61 @@ func getApprovalEmailTemplate(role string) string {
 func (s *ProfileService) GetProfile(userID uuid.UUID, role models.UserRole) (interface{}, error) {
 	switch role {
 	case models.RoleClient:
+		if s.redis != nil {
+			val, err := s.redis.Get(context.Background(), fmt.Sprintf("profile:%s:%s", userID, role)).Result()
+			if err == nil {
+				var p models.ClientProfile
+				if err := json.Unmarshal([]byte(val), &p); err == nil {
+					return p, nil
+				}
+			}
+		}
+
 		var p models.ClientProfile
 		err := db.DB.First(&p, userID).Error
+		if err == nil && s.redis != nil {
+			if data, err := json.Marshal(p); err == nil {
+				s.redis.Set(context.Background(), fmt.Sprintf("profile:%s:%s", userID, role), data, time.Hour)
+			}
+		}
 		return p, err
 	case models.RoleDriver:
+		if s.redis != nil {
+			val, err := s.redis.Get(context.Background(), fmt.Sprintf("profile:%s:%s", userID, role)).Result()
+			if err == nil {
+				var p models.DriverProfile
+				if err := json.Unmarshal([]byte(val), &p); err == nil {
+					return p, nil
+				}
+			}
+		}
+
 		var p models.DriverProfile
 		err := db.DB.First(&p, userID).Error
+		if err == nil && s.redis != nil {
+			if data, err := json.Marshal(p); err == nil {
+				s.redis.Set(context.Background(), fmt.Sprintf("profile:%s:%s", userID, role), data, time.Hour)
+			}
+		}
 		return p, err
 	case models.RoleVendor:
+		if s.redis != nil {
+			val, err := s.redis.Get(context.Background(), fmt.Sprintf("profile:%s:%s", userID, role)).Result()
+			if err == nil {
+				var p models.VendorProfile
+				if err := json.Unmarshal([]byte(val), &p); err == nil {
+					return p, nil
+				}
+			}
+		}
+
 		var p models.VendorProfile
 		err := db.DB.First(&p, userID).Error
+		if err == nil && s.redis != nil {
+			if data, err := json.Marshal(p); err == nil {
+				s.redis.Set(context.Background(), fmt.Sprintf("profile:%s:%s", userID, role), data, time.Hour)
+			}
+		}
 		return p, err
 	default:
 		return nil, errors.New("unknown role")

@@ -9,6 +9,26 @@ import (
 	"os"
 )
 
+// @title GoPickup API
+// @version 1.0
+// @description This is the backend API for GoPickup application.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api/v1
+// @schemes http https
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+
 func main() {
 	cwd, _ := os.Getwd()
 	log.Printf("Starting application... CWD: %s", cwd)
@@ -21,6 +41,7 @@ func main() {
 
 	// Connect to Database
 	db.Connect(cfg)
+	db.InitRedis(cfg)
 
 	// Auto Migrate (Optional in prod, default true for dev convenience)
 	if os.Getenv("MIGRATE_ON_START") != "false" {
@@ -40,6 +61,9 @@ func main() {
 		); err != nil {
 			log.Fatalf("Migration failed: %v", err)
 		}
+
+		// Run custom database optimizations (e.g. indexes)
+		db.RunCustomMigrations(db.GetDB())
 	}
 
 	// Setup Router

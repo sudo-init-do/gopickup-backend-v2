@@ -1,6 +1,8 @@
 package chat
 
 import (
+	"gopickup/internal/http/handlers"
+	"gopickup/internal/models"
 	"gopickup/internal/services/chat"
 	"net/http"
 	"strconv"
@@ -9,12 +11,19 @@ import (
 	"github.com/google/uuid"
 )
 
+var _ = models.Chat{}
+
 type Handler struct {
 	service *chat.ChatService
 }
 
 func NewHandler(s *chat.ChatService) *Handler {
 	return &Handler{service: s}
+}
+
+type InitiateChatRequest struct {
+	RecipientID uuid.UUID  `json:"recipient_user_id" binding:"required"`
+	OrderID     *uuid.UUID `json:"order_id"`
 }
 
 // InitiateChat godoc
@@ -25,25 +34,21 @@ func NewHandler(s *chat.ChatService) *Handler {
 // @Produce json
 // @Param request body InitiateChatRequest true "Chat details"
 // @Success 200 {object} models.Chat
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
+// @Failure 400 {object} handlers.ErrorResponse
+// @Failure 401 {object} handlers.ErrorResponse
 // @Router /chats/initiate [post]
 func (h *Handler) InitiateChat(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 
-	var req struct {
-		RecipientID uuid.UUID  `json:"recipient_user_id" binding:"required"`
-		OrderID     *uuid.UUID `json:"order_id"`
-	}
-
+	var req InitiateChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, handlers.ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	chat, err := h.service.InitiateChat(userID, req.RecipientID, req.OrderID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, handlers.ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -58,6 +63,7 @@ func (h *Handler) InitiateChat(c *gin.Context) {
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {array} chat.ChatResponse
+// @Failure 500 {object} handlers.ErrorResponse
 // @Router /chats [get]
 func (h *Handler) GetChats(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
@@ -83,6 +89,8 @@ func (h *Handler) GetChats(c *gin.Context) {
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
 // @Success 200 {array} models.Message
+// @Failure 404 {object} handlers.ErrorResponse
+// @Failure 500 {object} handlers.ErrorResponse
 // @Router /chats/{id}/messages [get]
 func (h *Handler) GetMessages(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
@@ -114,7 +122,7 @@ func (h *Handler) GetMessages(c *gin.Context) {
 // @Tags chats
 // @Produce json
 // @Param id path string true "Chat ID"
-// @Success 200 {object} SuccessResponse
+// @Success 200 {object} handlers.SuccessResponse
 // @Router /chats/{id}/read [patch]
 func (h *Handler) MarkRead(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)

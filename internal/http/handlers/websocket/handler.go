@@ -1,24 +1,65 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"gopickup/internal/config"
+	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"gopickup/internal/services/driver"
 	"gopickup/internal/services/notification"
 	"gopickup/internal/services/order"
 	"gopickup/internal/utils"
 
+	"sync"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
 )
+
+var (
+	lastLocationUpdate = make(map[uuid.UUID]time.Time)
+	lastChatMessage    = make(map[uuid.UUID]time.Time)
+	rateLimitMutex     sync.Mutex
+)
+
+// checkRateLimit returns true if action is allowed, false if limited
+func (h *Handler) checkRateLimit(userID uuid.UUID, interval time.Duration, keyPrefix string, tracker map[uuid.UUID]time.Time) bool {
+	// Try Redis first
+	if redisClient := db.GetRedis(); redisClient != nil {
+		ctx := context.Background()
+		key := fmt.Sprintf("ratelimit:%s:%s", keyPrefix, userID)
+
+		// SetNX (Set if Not Exists) with expiration
+		// If key exists, it means we are within the rate limit window
+		success, err := redisClient.SetNX(ctx, key, "1", interval).Result()
+		if err != nil {
+			log.Printf("Redis rate limit error: %v", err)
+			// Fallback to memory on error? Or block?
+			// Let's fallback to memory for safety.
+		} else {
+			return success
+		}
+	}
+
+	// In-memory fallback
+	rateLimitMutex.Lock()
+	defer rateLimitMutex.Unlock()
+	lastTime, ok := tracker[userID]
+	if ok && time.Since(lastTime) < interval {
+		return false
+	}
+	tracker[userID] = time.Now()
+	return true
+}
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -44,6 +85,13 @@ func NewHandler(ns *notification.NotificationService, os *order.OrderService, ds
 		db:            db,
 		cfg:           cfg,
 	}
+}
+
+func (h *Handler) GetMetrics() interface{} {
+	if h.notifService != nil && h.notifService.Hub != nil && h.notifService.Hub.Metrics != nil {
+		return h.notifService.Hub.Metrics.GetStats()
+	}
+	return nil
 }
 
 // HandleConnection upgrades HTTP to WS
@@ -316,6 +364,11 @@ func (h *Handler) handleDriverLocationUpdate(client *notification.Client, userID
 		return
 	}
 
+	// Rate limit: 5 seconds
+	if !h.checkRateLimit(userID, 5*time.Second, "location", lastLocationUpdate) {
+		return
+	}
+
 	// Update driver location in DB
 	if err := h.driverService.UpdateLocation(userID, p.Lat, p.Lng); err != nil {
 		log.Printf("UpdateLocation failed: %v", err)
@@ -331,6 +384,19 @@ func (h *Handler) handleChatMessage(client *notification.Client, userID uuid.UUI
 		Text   string `json:"text"`
 	}
 	if err := json.Unmarshal(payload, &p); err != nil {
+		return
+	}
+
+	if len(p.Text) > 1000 {
+		log.Printf("Message too long from %s", userID)
+		return
+	}
+	if len(strings.TrimSpace(p.Text)) == 0 {
+		return
+	}
+
+	// Rate limit: 1 second
+	if !h.checkRateLimit(userID, 1*time.Second, "chat", lastChatMessage) {
 		return
 	}
 

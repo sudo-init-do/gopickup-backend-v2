@@ -17,7 +17,7 @@ import (
 )
 
 type NotificationService struct {
-	hub *Hub
+	Hub *Hub
 	db  *gorm.DB
 	fcm *messaging.Client
 }
@@ -48,7 +48,7 @@ func NewNotificationService(database *gorm.DB) *NotificationService {
 	}
 
 	instance = &NotificationService{
-		hub: hub,
+		Hub: hub,
 		db:  database,
 		fcm: fcmClient,
 	}
@@ -60,7 +60,7 @@ func GetService() *NotificationService {
 }
 
 func (s *NotificationService) GetHub() *Hub {
-	return s.hub
+	return s.Hub
 }
 
 // UpdateFCMToken updates the user's FCM token
@@ -79,7 +79,7 @@ func (s *NotificationService) BroadcastToRoom(room string, event string, payload
 		log.Printf("Error marshaling broadcast message: %v", err)
 		return
 	}
-	s.hub.BroadcastToRoom(room, bytes)
+	s.Hub.BroadcastToRoom(room, bytes)
 }
 
 // SendNotification sends an FCM notification and optional WS message

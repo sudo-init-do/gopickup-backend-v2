@@ -33,14 +33,15 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	r.Use(middleware.LoggerMiddleware())
 	r.Use(middleware.RequestIDMiddleware())
 	r.Use(middleware.SecurityHeadersMiddleware())
+	r.Use(middleware.BodySizeLimitMiddleware(10 * 1024 * 1024)) // 10MB limit
 	r.Use(middleware.CORSMiddleware(cfg))
 
 	// Services
 	auditService := audit.NewAuditService(db.GetDB())
 	emailService := email.NewPlunkService(cfg)
 	authService := auth.NewAuthService(emailService, cfg)
-	profileService := profile.NewProfileService(emailService)
-	productService := product.NewProductService(auditService)
+	profileService := profile.NewProfileService(emailService, db.GetRedis())
+	productService := product.NewProductService(auditService, db.GetRedis())
 	orderService := order.NewOrderService(auditService)
 	driverService := driver.NewDriverService(auditService)
 	notifService := notification.NewNotificationService(db.GetDB())
@@ -80,6 +81,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 					"status": "up",
 					"app_env": cfg.AppEnv,
 					"metrics": "enabled",
+					"websocket": wsH.GetMetrics(),
 					// Add real metrics here if prometheus is added
 				})
 			})
