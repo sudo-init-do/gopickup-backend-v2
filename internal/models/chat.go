@@ -8,8 +8,8 @@ import (
 )
 
 type Chat struct {
-	ID        uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	OrderID   *uuid.UUID `gorm:"type:uuid;index" json:"order_id"` // Optional: Link to an order
+	ID      uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	OrderID *uuid.UUID `gorm:"type:uuid;index" json:"order_id"` // Optional: Link to an order
 
 	// For simplicity in this phase, we'll rely on Participants table or logic.
 	// But standard GORM many-to-many:
@@ -30,11 +30,11 @@ func (c *Chat) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type Message struct {
-	ID        uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	ChatID    uuid.UUID `gorm:"type:uuid;not null;index" json:"chat_id"`
-	SenderID  uuid.UUID `gorm:"type:uuid;not null;index" json:"sender_id"`
-	Content   string    `gorm:"type:text;not null" json:"content"`
-	IsRead    bool      `gorm:"default:false" json:"is_read"`
+	ID       uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	ChatID   uuid.UUID `gorm:"type:uuid;not null;index" json:"chat_id"`
+	SenderID uuid.UUID `gorm:"type:uuid;not null;index" json:"sender_id"`
+	Content  string    `gorm:"type:text;not null" json:"content"`
+	IsRead   bool      `gorm:"default:false" json:"is_read"`
 
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`

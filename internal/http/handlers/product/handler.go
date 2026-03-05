@@ -115,7 +115,7 @@ func (h *ProductHandler) GetVendorDashboard(c *gin.Context) {
 
 func (h *ProductHandler) ListProducts(c *gin.Context) {
 	var filter product.ProductFilter
-	
+
 	// Bind query parameters
 	if val := c.Query("category"); val != "" {
 		filter.Category = &val

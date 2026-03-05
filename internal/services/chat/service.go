@@ -60,7 +60,7 @@ func (s *ChatService) InitiateChat(initiatorID, recipientID uuid.UUID, orderID *
 	// 3. Check for existing chat
 	// We need to find a chat that has BOTH participants and the same OrderID (or lack thereof)
 	var existingChat models.Chat
-	
+
 	// Query chats with the specific OrderID (or NULL)
 	query := s.db.Model(&models.Chat{}).
 		Preload("Participants").
@@ -138,7 +138,7 @@ func (s *ChatService) GetUserChats(userID uuid.UUID, page, limit int) ([]ChatRes
 	for _, chat := range chats {
 		// Identify other participant
 		var otherParticipant *models.User
-		
+
 		if user.Role == models.RoleAdmin {
 			// For admin, just pick the first participant (or maybe the initiator?)
 			// Ideally we should show both, but sticking to the response format:
@@ -153,7 +153,7 @@ func (s *ChatService) GetUserChats(userID uuid.UUID, page, limit int) ([]ChatRes
 				}
 			}
 		}
-		
+
 		// If no other participant found (weird case, maybe self chat allowed later or data issue), skip or handle
 		if otherParticipant == nil && len(chat.Participants) > 0 {
 			// Maybe it's a chat with deleted user? Or just pick the first one if logic failed
@@ -185,7 +185,7 @@ func (s *ChatService) GetUserChats(userID uuid.UUID, page, limit int) ([]ChatRes
 				IsRead:    lastMsg.IsRead,
 			}
 		}
-		
+
 		// Calculate unread count
 		// For Admin, unread count might not make sense in the same way, or maybe sum of unread messages?
 		// Let's keep it 0 for admin or count all unread messages in the chat?
@@ -260,7 +260,7 @@ func isOrderActor(user *models.User, order *models.Order) bool {
 	if user.Role == models.RoleAdmin {
 		return true
 	}
-	
+
 	if order.ClientID == user.ID {
 		return true
 	}

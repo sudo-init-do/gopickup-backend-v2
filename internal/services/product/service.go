@@ -166,15 +166,15 @@ func (s *ProductService) DeleteProduct(vendorID uuid.UUID, productID uuid.UUID) 
 
 	// 2. Soft delete (set IsActive = false) per requirements
 	// The requirement says "soft delete preferred: set is_active=false"
-	// However, GORM has soft delete support via DeletedAt. 
-	// The user explicitly asked to set is_active=false. 
+	// However, GORM has soft delete support via DeletedAt.
+	// The user explicitly asked to set is_active=false.
 	// I will do both or just is_active=false. Let's do is_active=false to match requirements exactly.
-	
+
 	product.IsActive = false
 	if err := db.DB.Save(&product).Error; err != nil {
 		return err
 	}
-	
+
 	err := db.DB.Delete(&product).Error
 	if err == nil {
 		s.audit.Log(vendorID, "PRODUCT_DELETED", "product", product.ID, nil)
@@ -242,12 +242,12 @@ func (s *ProductService) ListProducts(filter ProductFilter) (*PaginatedResponse,
 	if limit > 100 {
 		limit = 100
 	}
-	
+
 	page := filter.Page
 	if page <= 0 {
 		page = 1
 	}
-	
+
 	offset := (page - 1) * limit
 	totalPages := int(math.Ceil(float64(totalItems) / float64(limit)))
 
@@ -299,12 +299,12 @@ func (s *ProductService) ListVendors(filter VendorFilter) (*PaginatedResponse, e
 	if limit <= 0 {
 		limit = 10
 	}
-	
+
 	page := filter.Page
 	if page <= 0 {
 		page = 1
 	}
-	
+
 	offset := (page - 1) * limit
 	totalPages := int(math.Ceil(float64(totalItems) / float64(limit)))
 

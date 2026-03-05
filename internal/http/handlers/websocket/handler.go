@@ -29,20 +29,20 @@ var upgrader = websocket.Upgrader{
 }
 
 type Handler struct {
-	notifService *notification.NotificationService
-	orderService *order.OrderService
+	notifService  *notification.NotificationService
+	orderService  *order.OrderService
 	driverService *driver.DriverService
-	db           *gorm.DB
-	cfg          *config.Config
+	db            *gorm.DB
+	cfg           *config.Config
 }
 
 func NewHandler(ns *notification.NotificationService, os *order.OrderService, ds *driver.DriverService, db *gorm.DB, cfg *config.Config) *Handler {
 	return &Handler{
-		notifService: ns,
-		orderService: os,
+		notifService:  ns,
+		orderService:  os,
 		driverService: ds,
-		db:           db,
-		cfg:          cfg,
+		db:            db,
+		cfg:           cfg,
 	}
 }
 
@@ -187,7 +187,7 @@ func (h *Handler) handleJoinOrderRoom(client *notification.Client, userID uuid.U
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return
 	}
-	
+
 	// Authorization check: Is user related to order?
 	// Client, Vendor, Driver, Admin
 	// We'll skip Admin check for now or assume Admin role if needed (but we don't have role here easily unless we store it in Client)
@@ -196,14 +196,14 @@ func (h *Handler) handleJoinOrderRoom(client *notification.Client, userID uuid.U
 	if err := h.db.First(&order, "id = ?", p.OrderID).Error; err != nil {
 		return
 	}
-	
+
 	isAuthorized := false
 	if order.ClientID == userID || order.VendorID == userID {
 		isAuthorized = true
 	} else if order.DriverID != nil && *order.DriverID == userID {
 		isAuthorized = true
 	}
-	
+
 	if isAuthorized {
 		h.notifService.GetHub().Subscribe(client, fmt.Sprintf("order:%s", p.OrderID))
 	}
@@ -226,10 +226,10 @@ func (h *Handler) handleJoinChatRoom(client *notification.Client, userID uuid.UU
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return
 	}
-	
+
 	// Auth check: Is user participant?
 	// Assuming Chat model has participants logic or simple check
-	// Since we defined Chat model but no participants table yet (just commented), 
+	// Since we defined Chat model but no participants table yet (just commented),
 	// let's assume if we had a Participants relation.
 	// For now, let's allow join if Chat exists, but ideally check participants.
 	// Or better: check if chat is linked to an order user is part of.
@@ -237,7 +237,7 @@ func (h *Handler) handleJoinChatRoom(client *notification.Client, userID uuid.UU
 	if err := h.db.First(&chat, "id = ?", p.ChatID).Error; err != nil {
 		return
 	}
-	
+
 	// If Chat has OrderID, check order participants
 	if chat.OrderID != nil {
 		var order models.Order
@@ -277,33 +277,33 @@ func (h *Handler) handleDriverLocationUpdate(client *notification.Client, userID
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return
 	}
-	
+
 	orderID, err := uuid.Parse(p.OrderID)
 	if err != nil {
 		return
 	}
-	
+
 	// Check if user is the assigned driver and order is in transit
 	var order models.Order
 	if err := h.db.First(&order, "id = ?", orderID).Error; err != nil {
 		return
 	}
-	
+
 	if order.DriverID == nil || *order.DriverID != userID {
 		// Not the assigned driver
 		return
 	}
-	
+
 	// "Only when order.status=transit"
 	// Transit statuses: "picked_up", "delivered" (maybe too late?), "assigned" (maybe on way to pickup?)
 	// Let's assume "assigned" (on way to pickup) and "picked_up" (on way to delivery) are valid.
 	if order.Status != models.OrderAssigned && order.Status != models.OrderPickedUp {
 		return
 	}
-	
+
 	// Update driver location in DB
 	h.driverService.UpdateLocation(userID, p.Lat, p.Lng)
-	
+
 	// Emit to order room
 	h.notifService.NotifyDriverMoved(orderID, p.Lat, p.Lng)
 }
@@ -316,7 +316,7 @@ func (h *Handler) handleChatMessage(client *notification.Client, userID uuid.UUI
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return
 	}
-	
+
 	chatID, err := uuid.Parse(p.ChatID)
 	if err != nil {
 		return
@@ -327,27 +327,33 @@ func (h *Handler) handleChatMessage(client *notification.Client, userID uuid.UUI
 	if err := h.db.First(&chat, "id = ?", chatID).Error; err != nil {
 		return
 	}
-	
+
 	// Check authorization (similar to join)
 	var recipientIDs []uuid.UUID
-	
+
 	if chat.OrderID != nil {
 		var order models.Order
 		if err := h.db.First(&order, "id = ?", *chat.OrderID).Error; err == nil {
 			isParticipant := false
-			
+
 			// Add participants
-			if order.ClientID == userID { isParticipant = true }
+			if order.ClientID == userID {
+				isParticipant = true
+			}
 			recipientIDs = append(recipientIDs, order.ClientID)
-			
-			if order.VendorID == userID { isParticipant = true }
+
+			if order.VendorID == userID {
+				isParticipant = true
+			}
 			recipientIDs = append(recipientIDs, order.VendorID)
-			
+
 			if order.DriverID != nil {
-				if *order.DriverID == userID { isParticipant = true }
+				if *order.DriverID == userID {
+					isParticipant = true
+				}
 				recipientIDs = append(recipientIDs, *order.DriverID)
 			}
-			
+
 			if !isParticipant {
 				log.Printf("User %s is not a participant", userID)
 				return // Not a participant
@@ -360,7 +366,7 @@ func (h *Handler) handleChatMessage(client *notification.Client, userID uuid.UUI
 		log.Println("Generic chat not supported yet")
 		return
 	}
-	
+
 	// Persist message
 	msg := models.Message{
 		ChatID:   chatID,
@@ -371,7 +377,7 @@ func (h *Handler) handleChatMessage(client *notification.Client, userID uuid.UUI
 		log.Printf("Error saving message: %v", err)
 		return
 	}
-	
+
 	// Emit
 	log.Printf("Emitting new message to chat %s and recipients %v", chatID, recipientIDs)
 	h.notifService.NotifyNewMessage(chatID, userID, p.Text, recipientIDs)

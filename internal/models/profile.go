@@ -28,20 +28,20 @@ type ClientProfile struct {
 }
 
 type DriverProfile struct {
-	UserID            uuid.UUID `gorm:"type:uuid;primaryKey"`
-	FullName          string    `gorm:"not null"`
-	PhoneNumber       string    `gorm:"unique;not null"`
-	LicenseNumber     string    `gorm:"unique;not null"`
-	VehicleType       VehicleType `gorm:"type:varchar(50);not null"`
-	PlateNumber       string    `gorm:"unique;not null"`
-	VehicleCapacity   float64   `gorm:"not null"` // Assuming capacity is a number (e.g., tons or kg)
-	IsApproved        bool      `gorm:"default:false"`
+	UserID             uuid.UUID   `gorm:"type:uuid;primaryKey"`
+	FullName           string      `gorm:"not null"`
+	PhoneNumber        string      `gorm:"unique;not null"`
+	LicenseNumber      string      `gorm:"unique;not null"`
+	VehicleType        VehicleType `gorm:"type:varchar(50);not null"`
+	PlateNumber        string      `gorm:"unique;not null"`
+	VehicleCapacity    float64     `gorm:"not null"` // Assuming capacity is a number (e.g., tons or kg)
+	IsApproved         bool        `gorm:"default:false"`
 	CurrentLocationLat *float64
 	CurrentLocationLng *float64
-	// Location field (PostGIS) omitted for now to keep simple compatibility with SQLite for tests, 
+	// Location field (PostGIS) omitted for now to keep simple compatibility with SQLite for tests,
 	// but can be added if Postgres is strictly enforced.
 	// We will rely on Lat/Lng for API logic for now.
-	
+
 	ProfilePictureURL *string
 
 	CreatedAt time.Time

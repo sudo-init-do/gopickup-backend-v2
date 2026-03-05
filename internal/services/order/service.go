@@ -17,12 +17,12 @@ type CheckoutItem struct {
 }
 
 type CheckoutRequest struct {
-	Items           []CheckoutItem     `json:"items" binding:"required,min=1,dive"`
+	Items           []CheckoutItem       `json:"items" binding:"required,min=1,dive"`
 	PaymentMethod   models.PaymentMethod `json:"payment_method" binding:"required"`
-	PickupAddress   string             `json:"pickup_address" binding:"required"`
-	DeliveryAddress string             `json:"delivery_address" binding:"required"`
-	DeliveryLat     *float64           `json:"delivery_lat"`
-	DeliveryLng     *float64           `json:"delivery_lng"`
+	PickupAddress   string               `json:"pickup_address" binding:"required"`
+	DeliveryAddress string               `json:"delivery_address" binding:"required"`
+	DeliveryLat     *float64             `json:"delivery_lat"`
+	DeliveryLng     *float64             `json:"delivery_lng"`
 }
 
 type OrderService struct {
