@@ -4,6 +4,7 @@ import (
 	"errors"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
+	"gopickup/internal/services/audit"
 	"gopickup/internal/services/notification"
 
 	"github.com/google/uuid"
@@ -24,10 +25,12 @@ type CheckoutRequest struct {
 	DeliveryLng     *float64           `json:"delivery_lng"`
 }
 
-type OrderService struct{}
+type OrderService struct {
+	audit *audit.AuditService
+}
 
-func NewOrderService() *OrderService {
-	return &OrderService{}
+func NewOrderService(audit *audit.AuditService) *OrderService {
+	return &OrderService{audit: audit}
 }
 
 // Checkout creates an order transactionally: validates products, stock, single vendor, creates order/items, decrements stock.
@@ -214,6 +217,7 @@ func (s *OrderService) VendorUpdateStatus(vendorID uuid.UUID, orderID uuid.UUID,
 	if err := db.GetDB().Save(&o).Error; err != nil {
 		return nil, err
 	}
+	s.audit.Log(vendorID, "ORDER_STATUS_CHANGED", "order", o.ID, map[string]interface{}{"status": next})
 	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
 	return &o, nil
 }
@@ -234,6 +238,7 @@ func (s *OrderService) VendorMarkReady(vendorID uuid.UUID, orderID uuid.UUID) (*
 	if err := db.GetDB().Save(&o).Error; err != nil {
 		return nil, err
 	}
+	s.audit.Log(vendorID, "ORDER_STATUS_CHANGED", "order", o.ID, map[string]interface{}{"status": models.OrderSearchingDriver})
 	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
 	return &o, nil
 }
@@ -313,6 +318,8 @@ func (s *OrderService) AcceptBid(clientID uuid.UUID, orderID uuid.UUID, bidID uu
 	if err != nil {
 		return nil, err
 	}
+
+	s.audit.Log(clientID, "BID_ACCEPTED", "order", orderID, map[string]interface{}{"driver_id": order.DriverID})
 
 	// Notifications
 	ns := notification.GetService()

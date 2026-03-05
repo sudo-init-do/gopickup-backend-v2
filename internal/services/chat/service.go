@@ -3,6 +3,7 @@ package chat
 import (
 	"errors"
 	"gopickup/internal/models"
+	"gopickup/internal/services/audit"
 	"gopickup/internal/services/notification"
 	"time"
 
@@ -13,12 +14,14 @@ import (
 type ChatService struct {
 	db           *gorm.DB
 	notifService *notification.NotificationService
+	audit        *audit.AuditService
 }
 
-func NewChatService(db *gorm.DB, ns *notification.NotificationService) *ChatService {
+func NewChatService(db *gorm.DB, ns *notification.NotificationService, audit *audit.AuditService) *ChatService {
 	return &ChatService{
 		db:           db,
 		notifService: ns,
+		audit:        audit,
 	}
 }
 
@@ -86,6 +89,8 @@ func (s *ChatService) InitiateChat(initiatorID, recipientID uuid.UUID, orderID *
 	if err := s.db.Create(&newChat).Error; err != nil {
 		return nil, err
 	}
+
+	s.audit.Log(initiatorID, "CHAT_INITIATED", "chat", newChat.ID, nil)
 
 	return &newChat, nil
 }

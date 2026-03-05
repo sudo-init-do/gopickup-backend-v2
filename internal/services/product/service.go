@@ -4,15 +4,18 @@ import (
 	"errors"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
+	"gopickup/internal/services/audit"
 	"math"
 
 	"github.com/google/uuid"
 )
 
-type ProductService struct{}
+type ProductService struct {
+	audit *audit.AuditService
+}
 
-func NewProductService() *ProductService {
-	return &ProductService{}
+func NewProductService(audit *audit.AuditService) *ProductService {
+	return &ProductService{audit: audit}
 }
 
 // DTOs
@@ -93,6 +96,8 @@ func (s *ProductService) CreateProduct(vendorID uuid.UUID, req CreateProductRequ
 		return nil, err
 	}
 
+	s.audit.Log(vendorID, "PRODUCT_CREATED", "product", product.ID, nil)
+
 	return &product, nil
 }
 
@@ -143,6 +148,8 @@ func (s *ProductService) UpdateProduct(vendorID uuid.UUID, productID uuid.UUID, 
 		return nil, err
 	}
 
+	s.audit.Log(vendorID, "PRODUCT_UPDATED", "product", product.ID, nil)
+
 	return &product, nil
 }
 
@@ -168,12 +175,11 @@ func (s *ProductService) DeleteProduct(vendorID uuid.UUID, productID uuid.UUID) 
 		return err
 	}
 	
-	// Also actually soft delete record if we want it hidden from queries not filtering by is_active?
-	// The requirement says "set is_active=false". I'll stick to that.
-	// But usually DELETE endpoint implies removal. 
-	// If I use gorm.DeletedAt, it's hidden by default.
-	// Let's do both: mark inactive AND soft delete.
-	return db.DB.Delete(&product).Error
+	err := db.DB.Delete(&product).Error
+	if err == nil {
+		s.audit.Log(vendorID, "PRODUCT_DELETED", "product", product.ID, nil)
+	}
+	return err
 }
 
 type VendorDashboardStats struct {

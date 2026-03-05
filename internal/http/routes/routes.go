@@ -10,6 +10,7 @@ import (
 	"gopickup/internal/models"
 	"gopickup/internal/services/auth"
 	"gopickup/internal/services/email"
+	"gopickup/internal/services/audit"
 	orderHandler "gopickup/internal/http/handlers/order"
 	driverHandler "gopickup/internal/http/handlers/driver"
 	"gopickup/internal/services/order"
@@ -23,20 +24,27 @@ import (
 	"gopickup/internal/services/chat"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/time/rate"
 )
 
 func SetupRouter(cfg *config.Config) *gin.Engine {
-	r := gin.Default()
+	r := gin.New() // Use New() to skip default logger/recovery as we add custom ones
+	r.Use(gin.Recovery())
+	r.Use(middleware.LoggerMiddleware())
+	r.Use(middleware.RequestIDMiddleware())
+	r.Use(middleware.SecurityHeadersMiddleware())
+	r.Use(middleware.CORSMiddleware())
 
 	// Services
+	auditService := audit.NewAuditService(db.GetDB())
 	emailService := email.NewPlunkService(cfg)
 	authService := auth.NewAuthService(emailService, cfg)
 	profileService := profile.NewProfileService(emailService)
-	productService := product.NewProductService()
-	orderService := order.NewOrderService()
-	driverService := driver.NewDriverService()
+	productService := product.NewProductService(auditService)
+	orderService := order.NewOrderService(auditService)
+	driverService := driver.NewDriverService(auditService)
 	notifService := notification.NewNotificationService(db.GetDB())
-	chatService := chat.NewChatService(db.GetDB(), notifService)
+	chatService := chat.NewChatService(db.GetDB(), notifService, auditService)
 
 	// Handlers
 	authH := authHandler.NewAuthHandler(authService)
@@ -51,6 +59,18 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	api := r.Group("/api/v1")
 	{
 		api.GET("/health", handlers.HealthCheck)
+		api.GET("/ready", func(c *gin.Context) {
+			sqlDB, err := db.GetDB().DB()
+			if err != nil {
+				c.JSON(503, gin.H{"status": "down", "error": "db_connection_error"})
+				return
+			}
+			if err := sqlDB.Ping(); err != nil {
+				c.JSON(503, gin.H{"status": "down", "error": "db_ping_failed"})
+				return
+			}
+			c.JSON(200, gin.H{"status": "up"})
+		})
 		api.GET("/ws", wsH.HandleConnection) // WebSocket Endpoint
 
 		api.GET("/products", productH.ListProducts)
@@ -58,6 +78,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		api.GET("/vendors", productH.ListVendors)
 
 		authGroup := api.Group("/auth")
+		authGroup.Use(middleware.RateLimitMiddleware(rate.Limit(5), 10))
 		{
 			authGroup.POST("/register", authH.Register)
 			authGroup.POST("/login", authH.Login)

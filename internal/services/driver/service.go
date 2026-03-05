@@ -4,15 +4,18 @@ import (
 	"errors"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
+	"gopickup/internal/services/audit"
 	"gopickup/internal/services/notification"
 
 	"github.com/google/uuid"
 )
 
-type DriverService struct{}
+type DriverService struct {
+	audit *audit.AuditService
+}
 
-func NewDriverService() *DriverService {
-	return &DriverService{}
+func NewDriverService(audit *audit.AuditService) *DriverService {
+	return &DriverService{audit: audit}
 }
 
 func (s *DriverService) UpdateLocation(driverID uuid.UUID, lat, lng float64) error {
@@ -72,6 +75,7 @@ func (s *DriverService) PlaceBid(driverID uuid.UUID, orderID uuid.UUID, amount f
 		if err := db.GetDB().Save(&existingBid).Error; err != nil {
 			return nil, err
 		}
+		s.audit.Log(driverID, "BID_UPDATED", "bid", existingBid.ID, map[string]interface{}{"amount": amount})
 		// Notify client about updated bid
 		notification.GetService().NotifyNewBid(order.ClientID, order.ID, existingBid.Amount)
 		return &existingBid, nil
@@ -86,6 +90,7 @@ func (s *DriverService) PlaceBid(driverID uuid.UUID, orderID uuid.UUID, amount f
 	if err := db.GetDB().Create(bid).Error; err != nil {
 		return nil, err
 	}
+	s.audit.Log(driverID, "BID_CREATED", "bid", bid.ID, map[string]interface{}{"amount": amount})
 	// Notify client about new bid
 	notification.GetService().NotifyNewBid(order.ClientID, order.ID, bid.Amount)
 	return bid, nil
