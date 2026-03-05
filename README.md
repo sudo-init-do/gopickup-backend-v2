@@ -44,7 +44,19 @@ CORS_ALLOW_ORIGINS=http://localhost:3000,https://myapp.com,*
 
 # Migrations
 MIGRATE_ON_START=true # Set to false in production if running migrations separately
+
+# Monitoring
+ENABLE_METRICS=true # Optional: Enable /api/v1/metrics endpoint
 ```
+
+## Documentation
+
+- [Deployment Runbook](docs/RUNBOOK.md)
+- [Backups & Restore](docs/BACKUPS.md)
+- [Monitoring & Alerts](docs/MONITORING.md)
+- [Security Checklist](docs/SECURITY_CHECKLIST.md)
+- [Staging Setup](docs/STAGING_SETUP.md)
+- [Smoke Tests](docs/SMOKE_TEST.md)
 
 ## Running Locally
 

@@ -1,18 +1,25 @@
 package middleware
 
 import (
-	"os"
+	"gopickup/internal/config"
+	"log"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 // CORSMiddleware handles Cross-Origin Resource Sharing
-func CORSMiddleware() gin.HandlerFunc {
-	allowOrigins := os.Getenv("CORS_ALLOW_ORIGINS")
+func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
+	allowOrigins := cfg.CorsOrigins
 	if allowOrigins == "" {
 		allowOrigins = "*"
 	}
+	
+	// Production Hard Lock: Ensure CORS is strict
+	if cfg.AppEnv == "production" && allowOrigins == "*" {
+		log.Fatal("SECURITY ERROR: CORS_ALLOW_ORIGINS cannot be '*' in production. Please set specific origins.")
+	}
+
 	origins := strings.Split(allowOrigins, ",")
 
 	return func(c *gin.Context) {

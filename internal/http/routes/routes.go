@@ -33,7 +33,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	r.Use(middleware.LoggerMiddleware())
 	r.Use(middleware.RequestIDMiddleware())
 	r.Use(middleware.SecurityHeadersMiddleware())
-	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.CORSMiddleware(cfg))
 
 	// Services
 	auditService := audit.NewAuditService(db.GetDB())
@@ -71,6 +71,20 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			}
 			c.JSON(200, gin.H{"status": "up"})
 		})
+		
+		// Metrics Endpoint (Optional, guarded by env)
+		if cfg.MetricsEnabled {
+			api.GET("/metrics", func(c *gin.Context) {
+				// Basic runtime stats
+				c.JSON(200, gin.H{
+					"status": "up",
+					"app_env": cfg.AppEnv,
+					"metrics": "enabled",
+					// Add real metrics here if prometheus is added
+				})
+			})
+		}
+		
 		api.GET("/ws", wsH.HandleConnection) // WebSocket Endpoint
 
 		api.GET("/products", productH.ListProducts)

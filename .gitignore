@@ -8,6 +8,8 @@
 dist/
 bin/
 main
+server
+migrate
 
 # IDEs
 .idea/
@@ -25,3 +27,7 @@ vendor/
 *.db
 *.db-journal
 gopickup.db
+*.dump
+
+# Logs
+*.log

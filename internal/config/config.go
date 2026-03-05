@@ -22,6 +22,7 @@ type Config struct {
 	PlunkFromName  string
 	JWTSecret      string
 	CorsOrigins    string
+	MetricsEnabled bool
 }
 
 func LoadConfig() (*Config, error) {
@@ -43,6 +44,7 @@ func LoadConfig() (*Config, error) {
 		PlunkFromName:  getEnv("PLUNK_FROM_NAME", ""),
 		JWTSecret:      getEnv("JWT_SECRET", ""),
 		CorsOrigins:    getEnv("CORS_ALLOW_ORIGINS", "*"),
+		MetricsEnabled: getEnv("ENABLE_METRICS", "false") == "true",
 	}
 
 	// Validate required variables
