@@ -15,7 +15,8 @@ import (
 
 func main() {
 	// 1. Parse flags
-	createAdmin := flag.Bool("admin", false, "Create an admin user")
+	seedAll := flag.Bool("seed", false, "Seed all test accounts (Admin, Client, Driver, Vendor)")
+	createAdmin := flag.Bool("admin", false, "Create an admin user only")
 	verifyUser := flag.String("verify", "", "Email of user to verify (mark verified=true)")
 	emailFlag := flag.String("email", "admin@gopickup.com", "Email for admin user")
 	passwordFlag := flag.String("password", "AdminPassword123!", "Password for admin user")
@@ -27,51 +28,135 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Safety check: Don't run in production unless explicitly forced (maybe add a force flag, but for now just warn)
-	if cfg.AppEnv == "production" {
-		log.Println("WARNING: Running seed tool in PRODUCTION environment.")
-		// In a real scenario, we might want to block this or require a confirmation.
-		// For now, we'll proceed but logging is critical.
+	// Safety check
+	allowSeed := os.Getenv("ALLOW_SEED")
+	if cfg.AppEnv == "production" && allowSeed != "true" {
+		log.Fatal("ERROR: Seeding is disabled in PRODUCTION. Set ALLOW_SEED=true to force.")
 	}
 
 	db.Connect(cfg)
 
 	// 3. Execute requested action
-	if *createAdmin {
+	if *seedAll {
+		seedAllAccounts()
+	} else if *createAdmin {
 		createAdminUser(*emailFlag, *passwordFlag)
-	}
-
-	if *verifyUser != "" {
+	} else if *verifyUser != "" {
 		verifyUserByEmail(*verifyUser)
-	}
-
-	if !*createAdmin && *verifyUser == "" {
+	} else {
 		fmt.Println("Usage:")
+		fmt.Println("  go run cmd/seed/main.go -seed (Create all test accounts)")
 		fmt.Println("  go run cmd/seed/main.go -admin -email=... -password=...")
 		fmt.Println("  go run cmd/seed/main.go -verify=user@example.com")
 		os.Exit(1)
 	}
 }
 
-func createAdminUser(email, password string) {
+func seedAllAccounts() {
+	log.Println("Seeding test accounts...")
+	
+	// Admin
+	createAdminUser("admin@test.com", "Password123!")
+
+	// Client
+	createClientUser("client@test.com", "Password123!")
+
+	// Driver
+	createDriverUser("driver@test.com", "Password123!")
+
+	// Vendor
+	createVendorUser("vendor@test.com", "Password123!")
+	
+	log.Println("Seeding complete!")
+}
+
+func createUser(email, password, role string, isVerified bool) uuid.UUID {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatalf("Failed to hash password: %v", err)
 	}
 
-	admin := models.User{
-		ID:           uuid.New(),
+	userID := uuid.New()
+	user := models.User{
+		ID:           userID,
 		Email:        email,
 		PasswordHash: string(hashedPassword),
-		Role:         models.RoleAdmin,
-		IsVerified:   true,
+		Role:         models.UserRole(role),
+		IsVerified:   isVerified,
 	}
 
-	if err := db.GetDB().Create(&admin).Error; err != nil {
-		log.Printf("Failed to create admin user (maybe exists?): %v", err)
-	} else {
-		log.Printf("Admin user created: %s", email)
+	if err := db.GetDB().Create(&user).Error; err != nil {
+		log.Printf("Failed to create user %s (maybe exists?): %v", email, err)
+		// Try to fetch existing ID if creation failed
+		var existingUser models.User
+		if err := db.GetDB().Where("email = ?", email).First(&existingUser).Error; err == nil {
+			return existingUser.ID
+		}
+		return uuid.Nil
 	}
+	log.Printf("User created: %s (%s)", email, role)
+	return userID
+}
+
+func createClientUser(email, password string) {
+	uid := createUser(email, password, string(models.RoleClient), true)
+	if uid == uuid.Nil { return }
+
+	profile := models.ClientProfile{
+		UserID:      uid,
+		FullName:    "Test Client",
+		PhoneNumber: "+1234567890",
+		Address:     "123 Client St",
+	}
+	if err := db.GetDB().Create(&profile).Error; err != nil {
+		log.Printf("Failed to create client profile: %v", err)
+	} else {
+		log.Printf("Client profile created for %s", email)
+	}
+}
+
+func createDriverUser(email, password string) {
+	uid := createUser(email, password, string(models.RoleDriver), true)
+	if uid == uuid.Nil { return }
+
+	profile := models.DriverProfile{
+		UserID:          uid,
+		FullName:        "Test Driver",
+		PhoneNumber:     "+1987654321",
+		LicenseNumber:   "DL12345678",
+		VehicleType:     models.VehicleVan,
+		PlateNumber:     "VAN-001",
+		VehicleCapacity: 1000,
+		IsApproved:      true,
+	}
+	if err := db.GetDB().Create(&profile).Error; err != nil {
+		log.Printf("Failed to create driver profile: %v", err)
+	} else {
+		log.Printf("Driver profile created for %s", email)
+	}
+}
+
+func createVendorUser(email, password string) {
+	uid := createUser(email, password, string(models.RoleVendor), true)
+	if uid == uuid.Nil { return }
+
+	profile := models.VendorProfile{
+		UserID:       uid,
+		StoreName:    "Test Store",
+		PhoneNumber:  "+1122334455",
+		BusinessType: "Retail",
+		Address:      "456 Market St",
+		IsApproved:   true,
+	}
+	if err := db.GetDB().Create(&profile).Error; err != nil {
+		log.Printf("Failed to create vendor profile: %v", err)
+	} else {
+		log.Printf("Vendor profile created for %s", email)
+	}
+}
+
+func createAdminUser(email, password string) {
+	createUser(email, password, string(models.RoleAdmin), true)
 }
 
 func verifyUserByEmail(email string) {
