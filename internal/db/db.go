@@ -18,8 +18,13 @@ func Connect(cfg *config.Config) {
 	if cfg.DBDriver == "sqlite" {
 		dialector = sqlite.Open(cfg.DBName + "?_journal_mode=WAL")
 	} else {
-		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
-			cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort)
+		var dsn string
+		if cfg.DatabaseURL != "" {
+			dsn = cfg.DatabaseURL
+		} else {
+			dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
+				cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort)
+		}
 		dialector = postgres.Open(dsn)
 	}
 

@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    image: gopickup-backend:latest
+    container_name: gopickup-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_ENV=production
+      - APP_PORT=8080
+      - DB_DRIVER=postgres
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-gopickup}
+      - DB_PASSWORD=${DB_PASSWORD:-secure_password}
+      - DB_NAME=${DB_NAME:-gopickup}
+      - PLUNK_API_KEY=${PLUNK_API_KEY}
+      - PLUNK_FROM_EMAIL=${PLUNK_FROM_EMAIL}
+      - PLUNK_FROM_NAME=${PLUNK_FROM_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-https://gopickup.com}
+      - MIGRATE_ON_START=false
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  migrate:
+    image: gopickup-backend:latest
+    container_name: gopickup-migrate
+    command: ["./migrate"]
+    environment:
+      - DB_DRIVER=postgres
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-gopickup}
+      - DB_PASSWORD=${DB_PASSWORD:-secure_password}
+      - DB_NAME=${DB_NAME:-gopickup}
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - tools
+
+  db:
+    image: postgres:15-alpine
+    container_name: gopickup-db
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER:-gopickup}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-secure_password}
+      - POSTGRES_DB=${DB_NAME:-gopickup}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gopickup}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    image: nginx:alpine
+    container_name: gopickup-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+
+volumes:
+  db_data:

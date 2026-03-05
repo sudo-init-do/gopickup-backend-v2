@@ -22,21 +22,24 @@ func main() {
 	// Connect to Database
 	db.Connect(cfg)
 
-	// Auto Migrate
-	log.Println("Running migrations...")
-	if err := db.GetDB().AutoMigrate(
-		&models.User{},
-		&models.ClientProfile{},
-		&models.DriverProfile{},
-		&models.VendorProfile{},
-		&models.Product{},
-		&models.Order{},
-		&models.OrderItem{},
-		&models.Bid{},
-		&models.Chat{},
-		&models.Message{},
-	); err != nil {
-		log.Fatalf("Migration failed: %v", err)
+	// Auto Migrate (Optional in prod, default true for dev convenience)
+	if os.Getenv("MIGRATE_ON_START") != "false" {
+		log.Println("Running migrations...")
+		if err := db.GetDB().AutoMigrate(
+			&models.User{},
+			&models.ClientProfile{},
+			&models.DriverProfile{},
+			&models.VendorProfile{},
+			&models.Product{},
+			&models.Order{},
+			&models.OrderItem{},
+			&models.Bid{},
+			&models.Chat{},
+			&models.Message{},
+			&models.AuditLog{},
+		); err != nil {
+			log.Fatalf("Migration failed: %v", err)
+		}
 	}
 
 	// Setup Router

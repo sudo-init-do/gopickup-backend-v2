@@ -16,10 +16,12 @@ type Config struct {
 	DBUser         string
 	DBPassword     string
 	DBName         string
+	DatabaseURL    string
 	PlunkAPIKey    string
 	PlunkFromEmail string
 	PlunkFromName  string
 	JWTSecret      string
+	CorsOrigins    string
 }
 
 func LoadConfig() (*Config, error) {
@@ -35,32 +37,36 @@ func LoadConfig() (*Config, error) {
 		DBUser:         getEnv("DB_USER", ""),
 		DBPassword:     getEnv("DB_PASSWORD", ""),
 		DBName:         getEnv("DB_NAME", ""),
+		DatabaseURL:    getEnv("DATABASE_URL", ""),
 		PlunkAPIKey:    getEnv("PLUNK_API_KEY", ""),
 		PlunkFromEmail: getEnv("PLUNK_FROM_EMAIL", ""),
 		PlunkFromName:  getEnv("PLUNK_FROM_NAME", ""),
 		JWTSecret:      getEnv("JWT_SECRET", ""),
+		CorsOrigins:    getEnv("CORS_ALLOW_ORIGINS", "*"),
 	}
 
 	// Validate required variables
-	if config.DBDriver == "postgres" {
-		if config.DBHost == "" {
-			return nil, fmt.Errorf("DB_HOST is required")
-		}
-		if config.DBPort == "" {
-			return nil, fmt.Errorf("DB_PORT is required")
-		}
-		if config.DBUser == "" {
-			return nil, fmt.Errorf("DB_USER is required")
-		}
-		if config.DBPassword == "" {
-			return nil, fmt.Errorf("DB_PASSWORD is required")
-		}
-		if config.DBName == "" {
-			return nil, fmt.Errorf("DB_NAME is required")
-		}
-	} else if config.DBDriver == "sqlite" {
-		if config.DBName == "" {
-			return nil, fmt.Errorf("DB_NAME is required for sqlite")
+	if config.DatabaseURL == "" {
+		if config.DBDriver == "postgres" {
+			if config.DBHost == "" {
+				return nil, fmt.Errorf("DB_HOST is required")
+			}
+			if config.DBPort == "" {
+				return nil, fmt.Errorf("DB_PORT is required")
+			}
+			if config.DBUser == "" {
+				return nil, fmt.Errorf("DB_USER is required")
+			}
+			if config.DBPassword == "" {
+				return nil, fmt.Errorf("DB_PASSWORD is required")
+			}
+			if config.DBName == "" {
+				return nil, fmt.Errorf("DB_NAME is required")
+			}
+		} else if config.DBDriver == "sqlite" {
+			if config.DBName == "" {
+				return nil, fmt.Errorf("DB_NAME is required for sqlite")
+			}
 		}
 	}
 
