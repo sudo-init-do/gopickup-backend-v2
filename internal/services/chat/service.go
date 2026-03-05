@@ -158,6 +158,7 @@ func (s *ChatService) GetUserChats(userID uuid.UUID, page, limit int) ([]ChatRes
 		if otherParticipant == nil && len(chat.Participants) > 0 {
 			// Maybe it's a chat with deleted user? Or just pick the first one if logic failed
 			// For 1-on-1 chats, this logic holds.
+			otherParticipant = &chat.Participants[0]
 		}
 
 		resp := ChatResponse{
