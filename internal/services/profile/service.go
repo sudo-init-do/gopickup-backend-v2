@@ -244,12 +244,16 @@ func (s *ProfileService) ApproveDriver(driverID uuid.UUID) error {
 	// Send notification email
 	var user models.User
 	if err := db.DB.First(&user, driverID).Error; err == nil {
-		go s.emailService.SendEmail(
-			user.Email,
-			"Driver Account Approved",
-			getApprovalEmailTemplate("Driver"),
-			"Congratulations! Your driver account has been approved. You can now start accepting jobs.",
-		)
+		go func() {
+			if err := s.emailService.SendEmail(
+				user.Email,
+				"Driver Account Approved",
+				getApprovalEmailTemplate("Driver"),
+				"Congratulations! Your driver account has been approved. You can now start accepting jobs.",
+			); err != nil {
+				fmt.Printf("Failed to send approval email: %v\n", err)
+			}
+		}()
 	}
 
 	return nil
@@ -273,12 +277,16 @@ func (s *ProfileService) ApproveVendor(vendorID uuid.UUID) error {
 	// Send notification email
 	var user models.User
 	if err := db.DB.First(&user, vendorID).Error; err == nil {
-		go s.emailService.SendEmail(
-			user.Email,
-			"Vendor Account Approved",
-			getApprovalEmailTemplate("Vendor"),
-			"Congratulations! Your vendor account has been approved. You can now start listing products.",
-		)
+		go func() {
+			if err := s.emailService.SendEmail(
+				user.Email,
+				"Vendor Account Approved",
+				getApprovalEmailTemplate("Vendor"),
+				"Congratulations! Your vendor account has been approved. You can now start listing products.",
+			); err != nil {
+				fmt.Printf("Failed to send approval email: %v\n", err)
+			}
+		}()
 	}
 
 	return nil

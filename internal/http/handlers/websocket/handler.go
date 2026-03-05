@@ -90,8 +90,17 @@ func (h *Handler) readPump(client *notification.Client, conn *websocket.Conn, us
 	}()
 
 	conn.SetReadLimit(5120) // 5KB limit
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-	conn.SetPongHandler(func(string) error { conn.SetReadDeadline(time.Now().Add(60 * time.Second)); return nil })
+	if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+		log.Printf("SetReadDeadline failed: %v", err)
+		return
+	}
+	conn.SetPongHandler(func(string) error {
+		if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+			log.Printf("SetReadDeadline failed in PongHandler: %v", err)
+			return err
+		}
+		return nil
+	})
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -117,9 +126,11 @@ func (h *Handler) writePump(client *notification.Client, conn *websocket.Conn) {
 	for {
 		select {
 		case message, ok := <-client.Send:
-			conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				return
+			}
 			if !ok {
-				conn.WriteMessage(websocket.CloseMessage, []byte{})
+				_ = conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
@@ -127,7 +138,9 @@ func (h *Handler) writePump(client *notification.Client, conn *websocket.Conn) {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			if _, err := w.Write(message); err != nil {
+				return
+			}
 
 			// Add queued chat messages to the current websocket message.
 			// n := len(client.Send)
@@ -140,7 +153,9 @@ func (h *Handler) writePump(client *notification.Client, conn *websocket.Conn) {
 				return
 			}
 		case <-ticker.C:
-			conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				return
+			}
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -302,7 +317,9 @@ func (h *Handler) handleDriverLocationUpdate(client *notification.Client, userID
 	}
 
 	// Update driver location in DB
-	h.driverService.UpdateLocation(userID, p.Lat, p.Lng)
+	if err := h.driverService.UpdateLocation(userID, p.Lat, p.Lng); err != nil {
+		log.Printf("UpdateLocation failed: %v", err)
+	}
 
 	// Emit to order room
 	h.notifService.NotifyDriverMoved(orderID, p.Lat, p.Lng)
