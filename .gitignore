@@ -26,6 +26,8 @@ vendor/
 # Databases
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 gopickup.db
 *.dump
 
