@@ -9,14 +9,17 @@ import (
 	"gorm.io/gorm"
 )
 
+// AuditService handles creating audit logs
 type AuditService struct {
 	db *gorm.DB
 }
 
+// NewAuditService creates a new AuditService
 func NewAuditService(db *gorm.DB) *AuditService {
 	return &AuditService{db: db}
 }
 
+// Log records an action in the audit log asynchronously
 func (s *AuditService) Log(actorID uuid.UUID, action, entityType string, entityID uuid.UUID, metadata interface{}) {
 	// Async logging to avoid blocking main request flow
 	go func() {

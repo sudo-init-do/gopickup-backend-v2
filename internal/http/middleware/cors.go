@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// CORSMiddleware handles Cross-Origin Resource Sharing
 func CORSMiddleware() gin.HandlerFunc {
 	allowOrigins := os.Getenv("CORS_ALLOW_ORIGINS")
 	if allowOrigins == "" {

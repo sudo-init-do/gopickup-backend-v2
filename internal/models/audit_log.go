@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// AuditLog represents an audit trail entry
 type AuditLog struct {
 	ID          uuid.UUID       `gorm:"type:uuid;primaryKey" json:"id"`
 	ActorUserID uuid.UUID       `gorm:"type:uuid;index" json:"actor_user_id"`
@@ -18,6 +19,7 @@ type AuditLog struct {
 	CreatedAt   time.Time       `json:"created_at"`
 }
 
+// BeforeCreate ensures the AuditLog has a valid UUID
 func (a *AuditLog) BeforeCreate(tx *gorm.DB) (err error) {
 	if a.ID == uuid.Nil {
 		a.ID = uuid.New()
