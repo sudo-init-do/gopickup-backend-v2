@@ -6,10 +6,12 @@ import (
 	"gopickup/internal/http/routes"
 	"gopickup/internal/models"
 	"log"
+	"os"
 )
 
 func main() {
-	log.Println("Starting application...")
+	cwd, _ := os.Getwd()
+	log.Printf("Starting application... CWD: %s", cwd)
 
 	// Load Config
 	cfg, err := config.LoadConfig()

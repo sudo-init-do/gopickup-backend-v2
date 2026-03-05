@@ -18,7 +18,9 @@ import (
 	"gopickup/internal/services/driver"
 	"gopickup/internal/services/notification"
 	wsHandler "gopickup/internal/http/handlers/websocket"
+	chatHandler "gopickup/internal/http/handlers/chat"
 	"gopickup/internal/db"
+	"gopickup/internal/services/chat"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,6 +36,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	orderService := order.NewOrderService()
 	driverService := driver.NewDriverService()
 	notifService := notification.NewNotificationService(db.GetDB())
+	chatService := chat.NewChatService(db.GetDB(), notifService)
 
 	// Handlers
 	authH := authHandler.NewAuthHandler(authService)
@@ -42,6 +45,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	orderH := orderHandler.NewOrderHandler(orderService)
 	driverH := driverHandler.NewDriverHandler(driverService)
 	wsH := wsHandler.NewHandler(notifService, orderService, driverService, db.GetDB(), cfg)
+	chatH := chatHandler.NewHandler(chatService)
 
 	// Public Routes
 	api := r.Group("/api/v1")
@@ -64,6 +68,15 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware(cfg))
 		{
+			// Chat Routes
+			chatGroup := protected.Group("/chats")
+			{
+				chatGroup.POST("/initiate", chatH.InitiateChat)
+				chatGroup.GET("", chatH.GetChats)
+				chatGroup.GET("/:id/messages", chatH.GetMessages)
+				chatGroup.PATCH("/:id/read", chatH.MarkRead)
+			}
+
 			protected.GET("/auth/me", authH.Me)
 			protected.GET("/orders", orderH.ListOrders)
 			protected.GET("/orders/:id", orderH.GetOrder)

@@ -16,7 +16,7 @@ func Connect(cfg *config.Config) {
 	var dialector gorm.Dialector
 
 	if cfg.DBDriver == "sqlite" {
-		dialector = sqlite.Open(cfg.DBName)
+		dialector = sqlite.Open(cfg.DBName + "?_journal_mode=WAL")
 	} else {
 		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
 			cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort)
