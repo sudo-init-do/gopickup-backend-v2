@@ -6,6 +6,7 @@ import (
 	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"gopickup/internal/services/email"
+	"log"
 
 	"github.com/google/uuid"
 )
@@ -251,7 +252,7 @@ func (s *ProfileService) ApproveDriver(driverID uuid.UUID) error {
 				getApprovalEmailTemplate("Driver"),
 				"Congratulations! Your driver account has been approved. You can now start accepting jobs.",
 			); err != nil {
-				fmt.Printf("Failed to send approval email: %v\n", err)
+				log.Printf("Failed to send approval email: %v", err)
 			}
 		}()
 	}
@@ -284,7 +285,7 @@ func (s *ProfileService) ApproveVendor(vendorID uuid.UUID) error {
 				getApprovalEmailTemplate("Vendor"),
 				"Congratulations! Your vendor account has been approved. You can now start listing products.",
 			); err != nil {
-				fmt.Printf("Failed to send approval email: %v\n", err)
+				log.Printf("Failed to send approval email: %v", err)
 			}
 		}()
 	}

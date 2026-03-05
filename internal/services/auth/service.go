@@ -8,6 +8,7 @@ import (
 	"gopickup/internal/models"
 	"gopickup/internal/services/email"
 	"gopickup/internal/utils"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -136,7 +137,7 @@ func (s *AuthService) Register(req RegisterRequest) error {
 			emailText,
 		)
 		if err != nil {
-			fmt.Printf("Failed to send OTP email to %s: %v\n", user.Email, err)
+			log.Printf("Failed to send OTP email to %s: %v", user.Email, err)
 		}
 	}()
 
