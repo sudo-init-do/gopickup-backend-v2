@@ -44,13 +44,17 @@ type VerifyOTPRequest struct {
 }
 
 type MeResponse struct {
-	ID         uuid.UUID       `json:"id"`
-	Email      string          `json:"email"`
-	Role       models.UserRole `json:"role"`
-	IsVerified bool            `json:"is_verified"`
-	FCMToken   string          `json:"fcm_token"`
-	CreatedAt  time.Time       `json:"created_at"`
-	UpdatedAt  time.Time       `json:"updated_at"`
+	ID             uuid.UUID       `json:"id"`
+	Email          string          `json:"email"`
+	Role           models.UserRole `json:"role"`
+	IsVerified     bool            `json:"is_verified"`
+	FCMToken       string          `json:"fcm_token"`
+	CreatedAt      time.Time       `json:"created_at"`
+	UpdatedAt      time.Time       `json:"updated_at"`
+	FullName       string          `json:"full_name"`
+	PhoneNumber    string          `json:"phone_number"`
+	ProfilePicture string          `json:"profile_picture"`
+	IsApproved     bool            `json:"is_approved"`
 }
 
 func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
@@ -153,27 +157,27 @@ func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
 	}
 
 	return &MeResponse{
-		ID:         user.ID,
-		Email:      user.Email,
-		Role:       user.Role,
-		IsVerified: user.IsVerified,
-		FCMToken:   fcmToken,
-		CreatedAt:  user.CreatedAt,
-		UpdatedAt:  user.UpdatedAt,
+		ID:             user.ID,
+		Email:          user.Email,
+		Role:           user.Role,
+		IsVerified:     user.IsVerified,
+		FCMToken:       fcmToken,
+		CreatedAt:      user.CreatedAt,
+		UpdatedAt:      user.UpdatedAt,
+		FullName:       "",
+		PhoneNumber:    "",
+		ProfilePicture: "",
+		IsApproved:     false,
 	}, nil
 }
 
 func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 	var user models.User
-	if err := db.DB.Select(
-		"id",
-		"email",
-		"role",
-		"is_verified",
-		"fcm_token",
-		"created_at",
-		"updated_at",
-	).Where("id = ?", userID).First(&user).Error; err != nil {
+	// Load user with relations to populate profile fields
+	if err := db.DB.Preload("ClientProfile").
+		Preload("DriverProfile").
+		Preload("VendorProfile").
+		First(&user, "id = ?", userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
@@ -185,14 +189,56 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 		fcmToken = *user.FCMToken
 	}
 
+	fullName := ""
+	phoneNumber := ""
+	profilePicture := ""
+	isApproved := false
+
+	switch user.Role {
+	case models.RoleClient:
+		if user.ClientProfile != nil {
+			fullName = user.ClientProfile.FullName
+			phoneNumber = user.ClientProfile.PhoneNumber
+			if user.ClientProfile.ProfilePictureURL != nil {
+				profilePicture = *user.ClientProfile.ProfilePictureURL
+			}
+			isApproved = true // Clients are always approved
+		}
+	case models.RoleDriver:
+		if user.DriverProfile != nil {
+			fullName = user.DriverProfile.FullName
+			phoneNumber = user.DriverProfile.PhoneNumber
+			if user.DriverProfile.ProfilePictureURL != nil {
+				profilePicture = *user.DriverProfile.ProfilePictureURL
+			}
+			isApproved = user.DriverProfile.IsApproved
+		}
+	case models.RoleVendor:
+		if user.VendorProfile != nil {
+			fullName = user.VendorProfile.StoreName
+			phoneNumber = user.VendorProfile.PhoneNumber
+			if user.VendorProfile.StoreBannerURL != nil {
+				profilePicture = *user.VendorProfile.StoreBannerURL
+			}
+			isApproved = user.VendorProfile.IsApproved
+		}
+	case models.RoleAdmin:
+		fullName = "Admin"
+		isApproved = true
+	}
+
 	return &MeResponse{
-		ID:         user.ID,
-		Email:      user.Email,
-		Role:       user.Role,
-		IsVerified: user.IsVerified,
-		FCMToken:   fcmToken,
-		CreatedAt:  user.CreatedAt,
-		UpdatedAt:  user.UpdatedAt,
+		ID:             user.ID,
+		Email:          user.Email,
+		Role:           user.Role,
+		IsVerified:     user.IsVerified,
+		FCMToken:       fcmToken,
+		CreatedAt:      user.CreatedAt,
+		UpdatedAt:      user.UpdatedAt,
+		FullName:       fullName,
+		PhoneNumber:    phoneNumber,
+		ProfilePicture: profilePicture,
+		IsApproved:     isApproved,
 	}, nil
 }
 
