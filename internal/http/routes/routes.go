@@ -57,6 +57,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	chatH := chatHandler.NewHandler(chatService)
 
 	// Public Routes
+	r.GET("/", handlers.HealthCheck)
+	r.GET("/health", handlers.HealthCheck)
+
 	api := r.Group("/api/v1")
 	{
 		api.GET("/health", handlers.HealthCheck)
