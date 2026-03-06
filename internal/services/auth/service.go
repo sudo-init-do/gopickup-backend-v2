@@ -58,9 +58,18 @@ type MeResponse struct {
 }
 
 func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
-	var existingUser models.User
-	if err := db.DB.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
-		return nil, errors.New("email already registered")
+	var user models.User
+	var isNewUser bool = true
+
+	// Check if user exists
+	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err == nil {
+		if user.IsVerified {
+			return nil, errors.New("email already registered")
+		}
+		// User exists but not verified
+		isNewUser = false
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err // DB error
 	}
 
 	hashedPassword, err := utils.HashPassword(req.Password)
@@ -69,22 +78,39 @@ func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
 	}
 
 	otp := utils.GenerateOTP()
-	user := models.User{
-		ID:           uuid.New(), // Explicitly set ID
-		Email:        req.Email,
-		PasswordHash: hashedPassword,
-		Role:         models.UserRole(req.Role),
-		OTPCode:      otp,
-		OTPExpiresAt: time.Now().Add(10 * time.Minute),
-		CreatedAt:    time.Now(), // Explicitly set timestamps
-		UpdatedAt:    time.Now(),
-	}
 
-	log.Printf("Attempting to create user: ID=%s Email=%s Role=%s", user.ID, user.Email, user.Role)
+	if isNewUser {
+		user = models.User{
+			ID:           uuid.New(), // Explicitly set ID
+			Email:        req.Email,
+			PasswordHash: hashedPassword,
+			Role:         models.UserRole(req.Role),
+			OTPCode:      otp,
+			OTPExpiresAt: time.Now().Add(10 * time.Minute),
+			CreatedAt:    time.Now(), // Explicitly set timestamps
+			UpdatedAt:    time.Now(),
+		}
 
-	if err := db.DB.Create(&user).Error; err != nil {
-		log.Printf("DB Create Error: %v", err)
-		return nil, err
+		log.Printf("Attempting to create user: ID=%s Email=%s Role=%s", user.ID, user.Email, user.Role)
+
+		if err := db.DB.Create(&user).Error; err != nil {
+			log.Printf("DB Create Error: %v", err)
+			return nil, err
+		}
+	} else {
+		// Update existing unverified user
+		user.PasswordHash = hashedPassword
+		user.Role = models.UserRole(req.Role)
+		user.OTPCode = otp
+		user.OTPExpiresAt = time.Now().Add(10 * time.Minute)
+		user.UpdatedAt = time.Now()
+
+		log.Printf("Updating unverified user: ID=%s Email=%s", user.ID, user.Email)
+
+		if err := db.DB.Save(&user).Error; err != nil {
+			log.Printf("DB Update Error: %v", err)
+			return nil, err
+		}
 	}
 
 	// Send OTP email
