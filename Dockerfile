@@ -33,6 +33,8 @@ RUN adduser -D -g '' appuser
 # Copy the binaries from the builder stage
 COPY --from=builder /app/server .
 COPY --from=builder /app/migrate .
+COPY scripts/entrypoint.sh .
+RUN chmod +x entrypoint.sh
 
 # Use the non-root user
 USER appuser
@@ -41,4 +43,4 @@ USER appuser
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./server"]
+ENTRYPOINT ["./entrypoint.sh"]
