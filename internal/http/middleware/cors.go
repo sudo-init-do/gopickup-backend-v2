@@ -23,8 +23,20 @@ func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 	origins := strings.Split(allowOrigins, ",")
 
 	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+		// Skip CORS for health checks
+		if path == "/" || path == "/health" || strings.HasPrefix(path, "/api/v1/health") {
+			c.Next()
+			return
+		}
+
 		origin := c.Request.Header.Get("Origin")
 		allow := false
+		
+		// Debug logging for CORS
+		if origin != "" {
+			// log.Printf("CORS Request: Origin=%s Path=%s", origin, path)
+		}
 
 		// Check if origin is allowed
 		if allowOrigins == "*" {
