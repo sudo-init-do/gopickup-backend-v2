@@ -10,10 +10,22 @@
 
 The GoPickup backend provides a RESTful API and WebSocket service for a multi-role logistics platform connecting Clients, Drivers, and Vendors.
 
-- **Base URL**: `http://localhost:8080/api/v1` (Local)
-- **WebSocket URL**: `ws://localhost:8080/api/v1/ws`
+- **Base URL (Production)**: `https://backend.gopickup.com.ng/api/v1`
+- **WebSocket URL (Production)**: `wss://backend.gopickup.com.ng/api/v1/ws`
+- **Base URL (Local)**: `http://localhost:8080/api/v1`
+- **WebSocket URL (Local)**: `ws://localhost:8080/api/v1/ws`
 - **Authentication**: JWT (Bearer Token)
 - **Roles**: `client`, `driver`, `vendor`, `admin`
+
+### 1.1 Service Health Check
+The backend provides a public health check endpoint to verify service availability.
+- **Endpoint**: `GET /` or `GET /health` or `GET /api/v1/health`
+- **Response**: `200 OK`
+  ```json
+  {
+    "status": "ok"
+  }
+  ```
 
 ---
 

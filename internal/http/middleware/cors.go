@@ -48,6 +48,25 @@ func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 					break
 				}
 			}
+			
+			// Explicitly allow known frontend domains (Hardcoded fail-safe)
+			if !allow {
+				trustedOrigins := []string{
+					"https://main.gopickup.com.ng",
+					"https://www.main.gopickup.com.ng",
+					"http://localhost:3000",
+				}
+				for _, o := range trustedOrigins {
+					if o == origin {
+						allow = true
+						break
+					}
+				}
+			}
+		}
+
+		if !allow && origin != "" {
+			 log.Printf("CORS BLOCKED: Origin=%s Path=%s", origin, path)
 		}
 
 		if allow {
