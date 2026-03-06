@@ -51,10 +51,12 @@ type MeResponse struct {
 	FCMToken       string          `json:"fcm_token"`
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
-	FullName       string          `json:"full_name"`
-	PhoneNumber    string          `json:"phone_number"`
-	ProfilePicture string          `json:"profile_picture"`
-	IsApproved     bool            `json:"is_approved"`
+	FullName          string          `json:"full_name"`
+	PhoneNumber       string          `json:"phone_number"`
+	Address           string          `json:"address"`
+	ProfilePictureURL string          `json:"profile_picture_url"`
+	ProfilePicture    string          `json:"profile_picture"`
+	IsApproved        bool            `json:"is_approved"`
 }
 
 func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
@@ -183,17 +185,19 @@ func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
 	}
 
 	return &MeResponse{
-		ID:             user.ID,
-		Email:          user.Email,
-		Role:           user.Role,
-		IsVerified:     user.IsVerified,
-		FCMToken:       fcmToken,
-		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
-		FullName:       "",
-		PhoneNumber:    "",
-		ProfilePicture: "",
-		IsApproved:     false,
+		ID:                user.ID,
+		Email:             user.Email,
+		Role:              user.Role,
+		IsVerified:        user.IsVerified,
+		FCMToken:          fcmToken,
+		CreatedAt:         user.CreatedAt,
+		UpdatedAt:         user.UpdatedAt,
+		FullName:          "",
+		PhoneNumber:       "",
+		Address:           "",
+		ProfilePictureURL: "",
+		ProfilePicture:    "",
+		IsApproved:        false,
 	}, nil
 }
 
@@ -217,7 +221,8 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 
 	fullName := ""
 	phoneNumber := ""
-	profilePicture := ""
+	address := ""
+	profilePictureURL := ""
 	isApproved := false
 
 	switch user.Role {
@@ -225,8 +230,9 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 		if user.ClientProfile != nil {
 			fullName = user.ClientProfile.FullName
 			phoneNumber = user.ClientProfile.PhoneNumber
+			address = user.ClientProfile.Address
 			if user.ClientProfile.ProfilePictureURL != nil {
-				profilePicture = *user.ClientProfile.ProfilePictureURL
+				profilePictureURL = *user.ClientProfile.ProfilePictureURL
 			}
 			isApproved = true // Clients are always approved
 		}
@@ -235,7 +241,7 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 			fullName = user.DriverProfile.FullName
 			phoneNumber = user.DriverProfile.PhoneNumber
 			if user.DriverProfile.ProfilePictureURL != nil {
-				profilePicture = *user.DriverProfile.ProfilePictureURL
+				profilePictureURL = *user.DriverProfile.ProfilePictureURL
 			}
 			isApproved = user.DriverProfile.IsApproved
 		}
@@ -243,8 +249,9 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 		if user.VendorProfile != nil {
 			fullName = user.VendorProfile.StoreName
 			phoneNumber = user.VendorProfile.PhoneNumber
+			address = user.VendorProfile.Address
 			if user.VendorProfile.StoreBannerURL != nil {
-				profilePicture = *user.VendorProfile.StoreBannerURL
+				profilePictureURL = *user.VendorProfile.StoreBannerURL
 			}
 			isApproved = user.VendorProfile.IsApproved
 		}
@@ -254,17 +261,19 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 	}
 
 	return &MeResponse{
-		ID:             user.ID,
-		Email:          user.Email,
-		Role:           user.Role,
-		IsVerified:     user.IsVerified,
-		FCMToken:       fcmToken,
-		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
-		FullName:       fullName,
-		PhoneNumber:    phoneNumber,
-		ProfilePicture: profilePicture,
-		IsApproved:     isApproved,
+		ID:                user.ID,
+		Email:             user.Email,
+		Role:              user.Role,
+		IsVerified:        user.IsVerified,
+		FCMToken:          fcmToken,
+		CreatedAt:         user.CreatedAt,
+		UpdatedAt:         user.UpdatedAt,
+		FullName:          fullName,
+		PhoneNumber:       phoneNumber,
+		Address:           address,
+		ProfilePictureURL: profilePictureURL,
+		ProfilePicture:    profilePictureURL,
+		IsApproved:        isApproved,
 	}, nil
 }
 
