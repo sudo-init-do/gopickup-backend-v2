@@ -53,15 +53,15 @@ type MeResponse struct {
 	UpdatedAt  time.Time       `json:"updated_at"`
 }
 
-func (s *AuthService) Register(req RegisterRequest) error {
+func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
 	var existingUser models.User
 	if err := db.DB.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
-		return errors.New("email already registered")
+		return nil, errors.New("email already registered")
 	}
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	otp := utils.GenerateOTP()
@@ -80,7 +80,7 @@ func (s *AuthService) Register(req RegisterRequest) error {
 
 	if err := db.DB.Create(&user).Error; err != nil {
 		log.Printf("DB Create Error: %v", err)
-		return err
+		return nil, err
 	}
 
 	// Send OTP email
@@ -147,7 +147,15 @@ func (s *AuthService) Register(req RegisterRequest) error {
 		}
 	}()
 
-	return nil
+	return &MeResponse{
+		ID:         user.ID,
+		Email:      user.Email,
+		Role:       user.Role,
+		IsVerified: user.IsVerified,
+		FCMToken:   user.FCMToken,
+		CreatedAt:  user.CreatedAt,
+		UpdatedAt:  user.UpdatedAt,
+	}, nil
 }
 
 func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {

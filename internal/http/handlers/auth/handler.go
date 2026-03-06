@@ -28,14 +28,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	// Log the incoming request (excluding password)
 	// log.Printf("Register Request: Email=%s Role=%s", req.Email, req.Role)
 
-	if err := h.service.Register(req); err != nil {
+	user, err := h.service.Register(req)
+	if err != nil {
 		// Log the service error
 		// log.Printf("Register Service Error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Registration successful. Please check your email for OTP."})
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Registration successful. Please check your email for OTP.",
+		"user":    user,
+	})
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
