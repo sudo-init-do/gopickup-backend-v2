@@ -9,10 +9,8 @@ import (
 
 	"gopickup/internal/models"
 
-	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
 	"github.com/google/uuid"
-	"google.golang.org/api/option"
 	"gorm.io/gorm"
 )
 
@@ -34,18 +32,22 @@ func NewNotificationService(database *gorm.DB) *NotificationService {
 	// In a real app, we'd load credentials from a file or env
 	// For now, we'll just log that FCM is not configured if init fails
 	// Or we can try to init with default credentials (GOOGLE_APPLICATION_CREDENTIALS)
-	ctx := context.Background()
-	app, err := firebase.NewApp(ctx, nil, option.WithCredentialsFile("firebase-credentials.json"))
-	if err == nil {
-		fcmClient, err = app.Messaging(ctx)
-		if err != nil {
-			log.Printf("Error initializing FCM messaging: %v", err)
-		} else {
-			log.Println("FCM initialized successfully")
-		}
-	} else {
-		log.Printf("FCM not initialized (credentials missing?): %v", err)
-	}
+	// ctx := context.Background()
+	// app, err := firebase.NewApp(ctx, nil, option.WithCredentialsFile("firebase-credentials.json"))
+	// if err == nil {
+	// 	fcmClient, err = app.Messaging(ctx)
+	// 	if err != nil {
+	// 		log.Printf("Error initializing FCM messaging: %v", err)
+	// 	} else {
+	// 		log.Println("FCM initialized successfully")
+	// 	}
+	// } else {
+	// 	log.Printf("FCM not initialized (credentials missing?): %v", err)
+	// }
+	
+	// Temporary bypass:
+	log.Println("FCM initialization skipped for now")
+	fcmClient = nil
 
 	instance = &NotificationService{
 		Hub: hub,
