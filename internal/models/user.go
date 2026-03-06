@@ -19,7 +19,7 @@ const (
 type User struct {
 	ID           uuid.UUID `gorm:"type:uuid;primary_key"`
 	Email        string    `gorm:"uniqueIndex;not null"`
-	PasswordHash string    `gorm:"column:password;not null" json:"-"`
+	PasswordHash string    `gorm:"not null" json:"-"`
 	Role         UserRole  `gorm:"type:varchar(20);not null"`
 	IsVerified   bool      `gorm:"default:false"`
 	FCMToken     *string   `gorm:"type:text"`
