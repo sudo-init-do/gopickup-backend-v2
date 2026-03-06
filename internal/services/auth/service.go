@@ -277,29 +277,34 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 	}, nil
 }
 
-func (s *AuthService) Login(req LoginRequest) (string, error) {
+func (s *AuthService) Login(req LoginRequest) (string, *MeResponse, error) {
 	var user models.User
 	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", errors.New("invalid credentials")
+			return "", nil, errors.New("invalid credentials")
 		}
-		return "", err
+		return "", nil, err
 	}
 
 	if !utils.CheckPasswordHash(req.Password, user.PasswordHash) {
-		return "", errors.New("invalid credentials")
+		return "", nil, errors.New("invalid credentials")
 	}
 
 	if !user.IsVerified {
-		return "", errors.New("account not verified. please verify your email")
+		return "", nil, errors.New("account not verified. please verify your email")
 	}
 
 	token, err := utils.GenerateJWT(user.ID, string(user.Role), s.config.JWTSecret)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	return token, nil
+	me, err := s.Me(user.ID)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return token, me, nil
 }
 
 func (s *AuthService) VerifyOTP(req VerifyOTPRequest) error {

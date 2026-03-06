@@ -39,6 +39,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Registration successful. Please check your email for OTP.",
 		"user":    user,
+		"token":   "", // Return empty token to prevent frontend crash if it expects this field
 	})
 }
 
@@ -49,13 +50,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := h.service.Login(req)
+	token, user, err := h.service.Login(req)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"user":  user,
+	})
 }
 
 func (h *AuthHandler) VerifyOTP(c *gin.Context) {
