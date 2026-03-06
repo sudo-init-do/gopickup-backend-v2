@@ -48,7 +48,7 @@ type MeResponse struct {
 	Email      string          `json:"email"`
 	Role       models.UserRole `json:"role"`
 	IsVerified bool            `json:"is_verified"`
-	FCMToken   *string         `json:"fcm_token"`
+	FCMToken   string          `json:"fcm_token"`
 	CreatedAt  time.Time       `json:"created_at"`
 	UpdatedAt  time.Time       `json:"updated_at"`
 }
@@ -147,12 +147,17 @@ func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
 		}
 	}()
 
+	fcmToken := ""
+	if user.FCMToken != nil {
+		fcmToken = *user.FCMToken
+	}
+
 	return &MeResponse{
 		ID:         user.ID,
 		Email:      user.Email,
 		Role:       user.Role,
 		IsVerified: user.IsVerified,
-		FCMToken:   user.FCMToken,
+		FCMToken:   fcmToken,
 		CreatedAt:  user.CreatedAt,
 		UpdatedAt:  user.UpdatedAt,
 	}, nil
@@ -175,12 +180,17 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 		return nil, err
 	}
 
+	fcmToken := ""
+	if user.FCMToken != nil {
+		fcmToken = *user.FCMToken
+	}
+
 	return &MeResponse{
 		ID:         user.ID,
 		Email:      user.Email,
 		Role:       user.Role,
 		IsVerified: user.IsVerified,
-		FCMToken:   user.FCMToken,
+		FCMToken:   fcmToken,
 		CreatedAt:  user.CreatedAt,
 		UpdatedAt:  user.UpdatedAt,
 	}, nil
