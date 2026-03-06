@@ -66,14 +66,20 @@ func (s *AuthService) Register(req RegisterRequest) error {
 
 	otp := utils.GenerateOTP()
 	user := models.User{
+		ID:           uuid.New(), // Explicitly set ID
 		Email:        req.Email,
 		PasswordHash: hashedPassword,
 		Role:         models.UserRole(req.Role),
 		OTPCode:      otp,
 		OTPExpiresAt: time.Now().Add(10 * time.Minute),
+		CreatedAt:    time.Now(), // Explicitly set timestamps
+		UpdatedAt:    time.Now(),
 	}
 
+	log.Printf("Attempting to create user: ID=%s Email=%s Role=%s", user.ID, user.Email, user.Role)
+
 	if err := db.DB.Create(&user).Error; err != nil {
+		log.Printf("DB Create Error: %v", err)
 		return err
 	}
 

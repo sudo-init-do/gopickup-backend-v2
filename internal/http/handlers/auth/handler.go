@@ -19,11 +19,18 @@ func NewAuthHandler(service *auth.AuthService) *AuthHandler {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req auth.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		// Log the error for debugging
+		// log.Printf("Register Validation Error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Log the incoming request (excluding password)
+	// log.Printf("Register Request: Email=%s Role=%s", req.Email, req.Role)
+
 	if err := h.service.Register(req); err != nil {
+		// Log the service error
+		// log.Printf("Register Service Error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
