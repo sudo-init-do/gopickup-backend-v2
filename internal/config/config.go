@@ -60,7 +60,7 @@ func LoadConfig() (*Config, error) {
 
 	config := &Config{
 		AppEnv:         getEnv("APP_ENV", "development"),
-		AppPort:        getEnv("APP_PORT", "8080"),
+		AppPort:        getEnv("APP_PORT", "3000"),
 		DBDriver:       getEnv("DB_DRIVER", "postgres"),
 		DBHost:         getEnv("DB_HOST", ""),
 		DBPort:         getEnv("DB_PORT", ""),

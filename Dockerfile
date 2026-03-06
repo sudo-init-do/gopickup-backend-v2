@@ -40,7 +40,7 @@ RUN chmod +x entrypoint.sh
 USER appuser
 
 # Expose the application port
-EXPOSE 8080
+EXPOSE 3000
 
 # Command to run the executable
 ENTRYPOINT ["./entrypoint.sh"]

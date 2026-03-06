@@ -69,6 +69,10 @@ func main() {
 	// Setup Router
 	r := routes.SetupRouter(cfg)
 
+	// Trust all proxies (running behind Traefik/Dokploy)
+	// This fixes the [GIN-debug] warning and ensures ClientIP() works correctly
+	r.SetTrustedProxies(nil)
+
 	log.Printf("Starting server on port %s", cfg.AppPort)
 	if err := r.Run(":" + cfg.AppPort); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
