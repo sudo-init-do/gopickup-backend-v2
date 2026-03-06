@@ -13,23 +13,12 @@ import (
 var RedisClient *redis.Client
 
 func InitRedis(cfg *config.Config) {
-	// Debug log to see what we are trying to connect to
-	// Masking password for safety in logs
-	safeURL := cfg.RedisURL
-	if len(safeURL) > 10 {
-		log.Printf("Attempting to connect to Redis URL: %s...", safeURL[:10])
-	} else {
-		log.Printf("Attempting to connect to Redis URL (short): %s", safeURL)
-	}
-
 	opt, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
 		log.Printf("Failed to parse Redis URL: %v. Using default localhost.", err)
 		opt = &redis.Options{
 			Addr: "localhost:6379",
 		}
-	} else {
-		log.Printf("Parsed Redis Options -> Addr: %s, DB: %d", opt.Addr, opt.DB)
 	}
 
 	RedisClient = redis.NewClient(opt)
