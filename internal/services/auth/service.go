@@ -9,6 +9,7 @@ import (
 	"gopickup/internal/services/email"
 	"gopickup/internal/utils"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -60,6 +61,7 @@ type MeResponse struct {
 }
 
 func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	var user models.User
 	var isNewUser bool = true
 
@@ -278,15 +280,18 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 }
 
 func (s *AuthService) Login(req LoginRequest) (string, *MeResponse, error) {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	var user models.User
 	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Printf("Login failed: User not found for email: %s", req.Email)
 			return "", nil, errors.New("invalid credentials")
 		}
 		return "", nil, err
 	}
 
 	if !utils.CheckPasswordHash(req.Password, user.PasswordHash) {
+		log.Printf("Login failed: Password mismatch for user: %s", req.Email)
 		return "", nil, errors.New("invalid credentials")
 	}
 
@@ -308,6 +313,7 @@ func (s *AuthService) Login(req LoginRequest) (string, *MeResponse, error) {
 }
 
 func (s *AuthService) VerifyOTP(req VerifyOTPRequest) error {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	var user models.User
 	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
 		return errors.New("user not found")
