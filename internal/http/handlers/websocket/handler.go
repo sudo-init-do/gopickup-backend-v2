@@ -98,6 +98,31 @@ func (h *Handler) GetMetrics() interface{} {
 func (h *Handler) HandleConnection(c *gin.Context) {
 	token := c.Query("token")
 	if token == "" {
+		// Try to get token from Authorization header
+		authHeader := c.GetHeader("Authorization")
+		if len(authHeader) > 7 && strings.EqualFold(authHeader[:7], "Bearer ") {
+			token = authHeader[7:]
+		}
+	}
+
+	if token == "" {
+		// Try to get token from Sec-WebSocket-Protocol (common workaround for browsers)
+		protocols := c.GetHeader("Sec-WebSocket-Protocol")
+		if protocols != "" {
+			parts := strings.Split(protocols, ",")
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				// JWTs are usually long, simple heuristic
+				if len(p) > 20 {
+					token = p
+					c.Header("Sec-WebSocket-Protocol", p)
+					break
+				}
+			}
+		}
+	}
+
+	if token == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
 		return
 	}

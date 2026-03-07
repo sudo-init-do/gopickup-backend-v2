@@ -36,7 +36,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"message": "Registration successful. Please check your email for OTP.",
 		"user":    user,
 		"token":   token,
