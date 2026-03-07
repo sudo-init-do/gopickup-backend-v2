@@ -194,6 +194,15 @@ func (s *ChatService) ToChatResponse(chat models.Chat, currentUser models.User) 
 		summary.ProfilePictureURL = pic
 
 		resp.OtherParticipant = summary
+	} else {
+		// Fallback for missing participant
+		resp.OtherParticipant = &UserSummary{
+			ID:                uuid.Nil,
+			Email:             "",
+			Role:              "unknown",
+			Name:              "Unknown User",
+			ProfilePictureURL: "",
+		}
 	}
 
 	if len(chat.Messages) > 0 {
@@ -323,8 +332,8 @@ func (s *ChatService) getUserProfileDetails(userID uuid.UUID, role models.UserRo
 type ChatResponse struct {
 	ID               uuid.UUID       `json:"id"`
 	OrderID          *uuid.UUID      `json:"order_id,omitempty"`
-	OtherParticipant *UserSummary    `json:"other_participant,omitempty"`
-	LastMessage      *MessagePreview `json:"last_message,omitempty"`
+	OtherParticipant *UserSummary    `json:"other_participant"`
+	LastMessage      *MessagePreview `json:"last_message"`
 	UnreadCount      int             `json:"unread_count"`
 	CreatedAt        time.Time       `json:"created_at"`
 	UpdatedAt        time.Time       `json:"updated_at"`
