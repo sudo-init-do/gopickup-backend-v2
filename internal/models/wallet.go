@@ -34,6 +34,10 @@ type Transaction struct {
 	CreatedAt   time.Time       `json:"created_at"`
 }
 
+func (Transaction) TableName() string {
+	return "wallet_transactions"
+}
+
 func (w *Wallet) BeforeCreate(tx *gorm.DB) (err error) {
 	if w.ID == uuid.Nil {
 		w.ID = uuid.New()
