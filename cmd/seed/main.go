@@ -59,7 +59,7 @@ func seedAllAccounts() {
 	createAdminUser("admin@test.com", "Password123!")
 
 	// Client
-	createClientUser("client@test.com", "Password123!")
+	clientID := createClientUser("client@test.com", "Password123!")
 
 	// Driver
 	createDriverUser("driver@test.com", "Password123!")
@@ -67,13 +67,80 @@ func seedAllAccounts() {
 	// Vendor
 	vendorID := createVendorUser("vendor@test.com", "Password123!")
 	if vendorID != uuid.Nil {
-		seedProducts(vendorID)
+		products := seedProducts(vendorID)
+		if clientID != uuid.Nil {
+			seedOrders(clientID, vendorID, products)
+		}
 	}
 	
 	log.Println("Seeding complete!")
 }
 
-func seedProducts(vendorID uuid.UUID) {
+func seedOrders(clientID, vendorID uuid.UUID, products []models.Product) {
+	if len(products) == 0 {
+		return
+	}
+
+	orders := []models.Order{
+		{
+			ClientID:           clientID,
+			VendorID:           vendorID,
+			TotalProductAmount: 30000.00,
+			PaymentMethod:      models.PaymentCard,
+			PickupAddress:      "456 Market St",
+			DeliveryAddress:    "123 Client St",
+			Status:             models.OrderPending,
+			Items: []models.OrderItem{
+				{
+					ProductID: products[0].ID,
+					Name:      products[0].Name,
+					Price:     products[0].Price,
+					Quantity:  1,
+				},
+				{
+					ProductID: products[1].ID,
+					Name:      products[1].Name,
+					Price:     products[1].Price,
+					Quantity:  1,
+				},
+			},
+		},
+		{
+			ClientID:           clientID,
+			VendorID:           vendorID,
+			TotalProductAmount: 15000.00,
+			PaymentMethod:      models.PaymentWallet,
+			PickupAddress:      "456 Market St",
+			DeliveryAddress:    "789 Another St",
+			Status:             models.OrderProcessing,
+			Items: []models.OrderItem{
+				{
+					ProductID: products[2].ID,
+					Name:      products[2].Name,
+					Price:     products[2].Price,
+					Quantity:  1,
+				},
+			},
+		},
+	}
+
+	for _, o := range orders {
+		o.ID = uuid.New()
+		// Items need ID
+		for i := range o.Items {
+			o.Items[i].ID = uuid.New()
+			o.Items[i].OrderID = o.ID
+		}
+		
+		if err := db.GetDB().Create(&o).Error; err != nil {
+			log.Printf("Failed to create order: %v", err)
+		} else {
+			log.Printf("Order created: %s (Status: %s)", o.ID, o.Status)
+		}
+	}
+}
+
+func seedProducts(vendorID uuid.UUID) []models.Product {
 	products := []models.Product{
 		{
 			VendorID:      vendorID,
@@ -107,14 +174,15 @@ func seedProducts(vendorID uuid.UUID) {
 		},
 	}
 
-	for _, p := range products {
-		p.ID = uuid.New() // Ensure ID is set
-		if err := db.GetDB().Create(&p).Error; err != nil {
-			log.Printf("Failed to create product %s: %v", p.Name, err)
+	for i := range products {
+		products[i].ID = uuid.New() // Ensure ID is set
+		if err := db.GetDB().Create(&products[i]).Error; err != nil {
+			log.Printf("Failed to create product %s: %v", products[i].Name, err)
 		} else {
-			log.Printf("Product created: %s", p.Name)
+			log.Printf("Product created: %s", products[i].Name)
 		}
 	}
+	return products
 }
 
 func createUser(email, password, role string, isVerified bool) uuid.UUID {
@@ -145,9 +213,9 @@ func createUser(email, password, role string, isVerified bool) uuid.UUID {
 	return userID
 }
 
-func createClientUser(email, password string) {
+func createClientUser(email, password string) uuid.UUID {
 	uid := createUser(email, password, string(models.RoleClient), true)
-	if uid == uuid.Nil { return }
+	if uid == uuid.Nil { return uuid.Nil }
 
 	profile := models.ClientProfile{
 		UserID:      uid,
@@ -160,6 +228,7 @@ func createClientUser(email, password string) {
 	} else {
 		log.Printf("Client profile created for %s", email)
 	}
+	return uid
 }
 
 func createDriverUser(email, password string) {
