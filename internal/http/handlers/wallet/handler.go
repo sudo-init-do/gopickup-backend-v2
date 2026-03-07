@@ -27,7 +27,7 @@ func (h *WalletHandler) GetBalance(c *gin.Context) {
 
 	wallet, err := h.service.GetBalance(userID.(uuid.UUID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get wallet balance"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get wallet balance: " + err.Error()})
 		return
 	}
 

@@ -34,6 +34,10 @@ type Transaction struct {
 	CreatedAt   time.Time       `json:"created_at"`
 }
 
+func (Wallet) TableName() string {
+	return "user_wallets"
+}
+
 func (Transaction) TableName() string {
 	return "wallet_transactions"
 }
