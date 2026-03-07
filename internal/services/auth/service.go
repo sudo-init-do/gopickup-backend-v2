@@ -45,13 +45,13 @@ type VerifyOTPRequest struct {
 }
 
 type MeResponse struct {
-	ID             uuid.UUID       `json:"id"`
-	Email          string          `json:"email"`
-	Role           models.UserRole `json:"role"`
-	IsVerified     bool            `json:"is_verified"`
-	FCMToken       string          `json:"fcm_token"`
-	CreatedAt      time.Time       `json:"created_at"`
-	UpdatedAt      time.Time       `json:"updated_at"`
+	ID                uuid.UUID       `json:"id"`
+	Email             string          `json:"email"`
+	Role              models.UserRole `json:"role"`
+	IsVerified        bool            `json:"is_verified"`
+	FCMToken          string          `json:"fcm_token"`
+	CreatedAt         time.Time       `json:"created_at"`
+	UpdatedAt         time.Time       `json:"updated_at"`
 	FullName          string          `json:"full_name"`
 	PhoneNumber       string          `json:"phone_number"`
 	Address           string          `json:"address"`
@@ -123,7 +123,10 @@ func (s *AuthService) Register(req RegisterRequest) (string, *MeResponse, error)
 		return "", nil, err
 	}
 
-	// Send OTP email
+	// Send Welcome Email
+	go s.sendWelcomeEmail(user.Email)
+
+	// Send OTP email (verification is still required even if we allow login)
 	go func() {
 		emailSubject := "Your GoPickup Verification Code"
 
@@ -200,13 +203,63 @@ func (s *AuthService) Register(req RegisterRequest) (string, *MeResponse, error)
 		FCMToken:          fcmToken,
 		CreatedAt:         user.CreatedAt,
 		UpdatedAt:         user.UpdatedAt,
-		FullName:          "",
+		FullName:          "", // No name at registration
 		PhoneNumber:       "",
 		Address:           "",
 		ProfilePictureURL: "",
 		ProfilePicture:    "",
 		IsApproved:        false,
 	}, nil
+}
+
+func (s *AuthService) sendWelcomeEmail(email string) {
+	subject := "Welcome to GoPickup!"
+	htmlBody := `
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+			<style>
+				body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f6f9fc; margin: 0; padding: 0; color: #333333; }
+				.wrapper { width: 100%%; background-color: #f6f9fc; padding: 40px 0; }
+				.container { max-width: 460px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); overflow: hidden; }
+				.header { background-color: #0055ff; padding: 40px; text-align: center; }
+				.logo { font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; text-decoration: none; }
+				.content { padding: 40px; text-align: center; }
+				.title { font-size: 24px; font-weight: 700; margin-bottom: 16px; color: #1a1a1a; }
+				.text { font-size: 16px; line-height: 1.6; color: #4e5c6e; margin-bottom: 32px; }
+				.button { display: inline-block; background-color: #0055ff; color: #ffffff; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none; transition: background-color 0.2s; }
+				.button:hover { background-color: #0044cc; }
+				.footer { padding: 20px; text-align: center; color: #8898aa; font-size: 12px; line-height: 1.5; }
+			</style>
+		</head>
+		<body>
+			<div class="wrapper">
+				<div class="container">
+					<div class="header">
+						<div class="logo">GoPickup</div>
+					</div>
+					<div class="content">
+						<div class="title">Welcome Aboard! 🎉</div>
+						<p class="text">We're thrilled to have you join GoPickup. You've taken the first step towards smarter, more efficient logistics.</p>
+						<p class="text">Your account is ready to go. Explore the marketplace, connect with drivers, or start managing your fleet today.</p>
+						<a href="https://main.gopickup.com.ng" class="button">Go to Dashboard</a>
+					</div>
+				</div>
+				<div class="footer">
+					&copy; 2026 GoPickup Inc.<br>
+					Making logistics simple.
+				</div>
+			</div>
+		</body>
+		</html>
+	`
+	textBody := "Welcome to GoPickup! We're thrilled to have you join us. Your account is ready to go."
+
+	if err := s.emailService.SendEmail(email, subject, htmlBody, textBody); err != nil {
+		log.Printf("Failed to send welcome email to %s: %v", email, err)
+	}
 }
 
 func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
@@ -319,31 +372,42 @@ func (s *AuthService) Login(req LoginRequest) (string, *MeResponse, error) {
 	return token, me, nil
 }
 
-func (s *AuthService) VerifyOTP(req VerifyOTPRequest) error {
+func (s *AuthService) VerifyOTP(req VerifyOTPRequest) (string, *MeResponse, error) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	var user models.User
 	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		return errors.New("user not found")
+		return "", nil, errors.New("user not found")
 	}
 
 	if user.IsVerified {
-		return errors.New("user already verified")
+		return "", nil, errors.New("user already verified")
 	}
 
 	if user.OTPCode != req.OTP {
-		return errors.New("invalid OTP")
+		return "", nil, errors.New("invalid OTP")
 	}
 
 	if time.Now().After(user.OTPExpiresAt) {
-		return errors.New("OTP expired")
+		return "", nil, errors.New("OTP expired")
 	}
 
 	// Verify user
 	user.IsVerified = true
 	user.OTPCode = "" // Clear OTP
 	if err := db.DB.Save(&user).Error; err != nil {
-		return err
+		return "", nil, err
 	}
 
-	return nil
+	// Generate token
+	token, err := utils.GenerateJWT(user.ID, string(user.Role), s.config.JWTSecret)
+	if err != nil {
+		return "", nil, err
+	}
+
+	me, err := s.Me(user.ID)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return token, me, nil
 }

@@ -69,12 +69,17 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.VerifyOTP(req); err != nil {
+	token, user, err := h.service.VerifyOTP(req)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Account verified successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Account verified successfully",
+		"token":   token,
+		"user":    user,
+	})
 }
 
 func (h *AuthHandler) Me(c *gin.Context) {

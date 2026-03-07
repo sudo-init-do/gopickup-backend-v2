@@ -20,44 +20,39 @@ func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 		log.Fatal("SECURITY ERROR: CORS_ALLOW_ORIGINS cannot be '*' in production. Please set specific origins.")
 	}
 
-	origins := strings.Split(allowOrigins, ",")
+	// Pre-calculate allowed origins from config
+	configOrigins := strings.Split(allowOrigins, ",")
+
+	// Hardcoded trusted origins (Always allowed)
+	trustedOrigins := []string{
+		"https://main.gopickup.com.ng",
+		"https://www.main.gopickup.com.ng",
+		"https://gopickup.com.ng",
+		"https://www.gopickup.com.ng",
+		"http://localhost:3000",
+		"http://localhost:5173",
+	}
 
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
-		// Skip CORS for health checks
-		if path == "/" || path == "/health" || strings.HasPrefix(path, "/api/v1/health") {
-			c.Next()
-			return
-		}
-
 		origin := c.Request.Header.Get("Origin")
 		allow := false
-		
-		// Debug logging for CORS
-		if origin != "" {
-			// log.Printf("CORS Request: Origin=%s Path=%s", origin, path)
+
+		// 1. Check trusted origins (Hardcoded whitelist)
+		for _, o := range trustedOrigins {
+			if strings.EqualFold(strings.TrimSpace(o), strings.TrimSpace(origin)) {
+				allow = true
+				break
+			}
 		}
 
-		// Check if origin is allowed
-		if allowOrigins == "*" {
-			allow = true
-		} else {
-			for _, o := range origins {
-				if strings.TrimSpace(o) == origin {
-					allow = true
-					break
-				}
-			}
-			
-			// Explicitly allow known frontend domains (Hardcoded fail-safe)
-			if !allow {
-				trustedOrigins := []string{
-					"https://main.gopickup.com.ng",
-					"https://www.main.gopickup.com.ng",
-					"http://localhost:3000",
-				}
-				for _, o := range trustedOrigins {
-					if o == origin {
+		// 2. Check configuration if not already allowed
+		if !allow {
+			if allowOrigins == "*" {
+				allow = true
+			} else {
+				for _, o := range configOrigins {
+					if strings.EqualFold(strings.TrimSpace(o), strings.TrimSpace(origin)) {
 						allow = true
 						break
 					}
@@ -65,8 +60,9 @@ func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 			}
 		}
 
-		if !allow && origin != "" {
-			 log.Printf("CORS BLOCKED: Origin=%s Path=%s", origin, path)
+		// Log blocked CORS requests for debugging (except health checks)
+		if !allow && origin != "" && path != "/" && path != "/health" {
+			log.Printf("CORS BLOCKED: Origin=%s Path=%s Allowed=%s", origin, path, allowOrigins)
 		}
 
 		if allow {
@@ -74,6 +70,7 @@ func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-Request-ID")
 			c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, PATCH, DELETE")
+			c.Writer.Header().Set("Access-Control-Max-Age", "86400") // 24 hours
 		}
 
 		if c.Request.Method == "OPTIONS" {
