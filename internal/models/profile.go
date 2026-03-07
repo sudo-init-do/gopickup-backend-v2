@@ -9,11 +9,13 @@ import (
 type VehicleType string
 
 const (
-	VehicleTricycle VehicleType = "Tricycle"
-	VehicleVan      VehicleType = "Van"
-	VehicleTruck    VehicleType = "Truck"
-	VehicleFlatbed  VehicleType = "Flatbed"
-	VehicleTrailer  VehicleType = "Trailer"
+	VehicleTricycle  VehicleType = "Tricycle"
+	VehicleVan       VehicleType = "Van"
+	VehicleTruck     VehicleType = "Truck"
+	VehicleTrucks    VehicleType = "Trucks"
+	VehicleFlatbed   VehicleType = "Flatbed"
+	VehicleFlatbeds  VehicleType = "Flatbeds"
+	VehicleTrailer   VehicleType = "Trailer"
 )
 
 type ClientProfile struct {
