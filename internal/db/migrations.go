@@ -11,14 +11,37 @@ func RunCustomMigrations(db *gorm.DB) {
 	if db.Dialector.Name() == "postgres" {
 		log.Println("Running PostgreSQL specific migrations...")
 		fixUserPasswordSchema(db)
-		fixOrderTotalAmountSchema(db)
+		fixOrderSchema(db)
 		fixMessageSchema(db)
 		createProductSearchIndex(db)
 	}
 }
 
-func fixOrderTotalAmountSchema(db *gorm.DB) {
-	// Check if 'total_amount' column exists and make it nullable (it's likely a legacy column)
+func fixOrderSchema(db *gorm.DB) {
+	// Check if 'orders' table exists and if 'id' is NOT uuid
+	var dataType string
+	db.Raw("SELECT data_type FROM information_schema.columns WHERE table_name='orders' AND column_name='id'").Scan(&dataType)
+
+	if dataType != "" && dataType != "uuid" {
+		log.Printf("Detected incorrect schema for 'orders' table (ID type is %s). Recreating tables...", dataType)
+		
+		if err := db.Exec(`DROP TABLE IF EXISTS order_items CASCADE`).Error; err != nil {
+			log.Printf("Failed to drop order_items table: %v", err)
+		}
+		if err := db.Exec(`DROP TABLE IF EXISTS orders CASCADE`).Error; err != nil {
+			log.Printf("Failed to drop orders table: %v", err)
+		}
+
+		log.Println("Recreating orders tables with correct schema...")
+		if err := db.AutoMigrate(&models.Order{}, &models.OrderItem{}); err != nil {
+			log.Printf("Failed to recreate tables: %v", err)
+		} else {
+			log.Println("Successfully recreated 'orders' and 'order_items' tables with UUIDs.")
+		}
+		return
+	}
+
+	// Check if 'total_amount' column exists and make it nullable (legacy support)
 	var count int64
 	db.Raw("SELECT count(*) FROM information_schema.columns WHERE table_name='orders' AND column_name='total_amount'").Scan(&count)
 	if count > 0 {
