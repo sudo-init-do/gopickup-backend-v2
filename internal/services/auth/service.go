@@ -41,7 +41,7 @@ type LoginRequest struct {
 
 type VerifyOTPRequest struct {
 	Email string `json:"email" binding:"required,email"`
-	OTP   string `json:"otp" binding:"required,len=6"`
+	OTP   string `json:"otp" binding:"required"`
 }
 
 type MeResponse struct {
@@ -374,7 +374,7 @@ func (s *AuthService) Login(req LoginRequest) (string, *MeResponse, error) {
 
 func (s *AuthService) VerifyOTP(req VerifyOTPRequest) (string, *MeResponse, error) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
-	req.OTP = strings.TrimSpace(req.OTP) // Trim whitespace from OTP input
+	req.OTP = strings.ReplaceAll(req.OTP, " ", "") // Remove all spaces from OTP input
 
 	var user models.User
 	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
