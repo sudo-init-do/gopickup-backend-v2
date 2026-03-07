@@ -33,7 +33,7 @@ type InitiateChatRequest struct {
 // @Accept json
 // @Produce json
 // @Param request body InitiateChatRequest true "Chat details"
-// @Success 200 {object} models.Chat
+// @Success 200 {object} chat.ChatResponse
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 401 {object} handlers.ErrorResponse
 // @Router /chats/initiate [post]

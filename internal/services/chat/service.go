@@ -26,7 +26,7 @@ func NewChatService(db *gorm.DB, ns *notification.NotificationService, audit *au
 }
 
 // InitiateChat creates or returns an existing chat between two users, optionally linked to an order
-func (s *ChatService) InitiateChat(initiatorID, recipientID uuid.UUID, orderID *uuid.UUID) (*models.Chat, error) {
+func (s *ChatService) InitiateChat(initiatorID, recipientID uuid.UUID, orderID *uuid.UUID) (*ChatResponse, error) {
 	// 1. Validate users exist
 	var initiator, recipient models.User
 	if err := s.db.First(&initiator, "id = ?", initiatorID).Error; err != nil {
@@ -64,6 +64,9 @@ func (s *ChatService) InitiateChat(initiatorID, recipientID uuid.UUID, orderID *
 	// Query chats with the specific OrderID (or NULL)
 	query := s.db.Model(&models.Chat{}).
 		Preload("Participants").
+		Preload("Messages", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC").Limit(1)
+		}).
 		Joins("JOIN chat_participants cp1 ON cp1.chat_id = chats.id AND cp1.user_id = ?", initiatorID).
 		Joins("JOIN chat_participants cp2 ON cp2.chat_id = chats.id AND cp2.user_id = ?", recipientID)
 
@@ -74,17 +77,22 @@ func (s *ChatService) InitiateChat(initiatorID, recipientID uuid.UUID, orderID *
 	}
 
 	if err := query.First(&existingChat).Error; err == nil {
-		return &existingChat, nil
+		resp := s.ToChatResponse(existingChat, initiator)
+		return &resp, nil
 	}
 
 	// 4. Create new chat
 	newChat := models.Chat{
 		OrderID: orderID,
 		Participants: []models.User{
-			{ID: initiatorID},
-			{ID: recipientID},
+			initiator, // Use full objects to ensure they are available for ToChatResponse if needed, though ToChatResponse uses db to fetch profile
+			recipient,
 		},
 	}
+	// ToChatResponse expects Participants to be populated.
+	// When creating with GORM, we usually just pass IDs or empty structs with IDs.
+	// But here we want to return a response immediately.
+	// Let's use the fetched user objects.
 
 	if err := s.db.Create(&newChat).Error; err != nil {
 		return nil, err
@@ -92,7 +100,8 @@ func (s *ChatService) InitiateChat(initiatorID, recipientID uuid.UUID, orderID *
 
 	s.audit.Log(initiatorID, "CHAT_INITIATED", "chat", newChat.ID, nil)
 
-	return &newChat, nil
+	resp := s.ToChatResponse(newChat, initiator)
+	return &resp, nil
 }
 
 // GetUserChats returns all chats for a user
@@ -136,74 +145,77 @@ func (s *ChatService) GetUserChats(userID uuid.UUID, page, limit int) ([]ChatRes
 
 	var response []ChatResponse
 	for _, chat := range chats {
-		// Identify other participant
-		var otherParticipant *models.User
-
-		if user.Role == models.RoleAdmin {
-			// For admin, just pick the first participant (or maybe the initiator?)
-			// Ideally we should show both, but sticking to the response format:
-			if len(chat.Participants) > 0 {
-				otherParticipant = &chat.Participants[0]
-			}
-		} else {
-			for _, p := range chat.Participants {
-				if p.ID != userID {
-					otherParticipant = &p
-					break // Just pick the first one that isn't me
-				}
-			}
-		}
-
-		// If no other participant found (weird case, maybe self chat allowed later or data issue), skip or handle
-		if otherParticipant == nil && len(chat.Participants) > 0 {
-			// Maybe it's a chat with deleted user? Or just pick the first one if logic failed
-			// For 1-on-1 chats, this logic holds.
-			otherParticipant = &chat.Participants[0]
-		}
-
-		resp := ChatResponse{
-			ID:        chat.ID,
-			OrderID:   chat.OrderID,
-			CreatedAt: chat.CreatedAt,
-			UpdatedAt: chat.UpdatedAt,
-		}
-
-		if otherParticipant != nil {
-			resp.OtherParticipant = &UserSummary{
-				ID:    otherParticipant.ID,
-				Email: otherParticipant.Email,
-				Role:  string(otherParticipant.Role),
-				// Add name/avatar if available (requires querying profiles, but let's keep it simple for now or join profiles)
-			}
-		}
-
-		if len(chat.Messages) > 0 {
-			lastMsg := chat.Messages[0]
-			resp.LastMessage = &MessagePreview{
-				Content:   lastMsg.Content,
-				CreatedAt: lastMsg.CreatedAt,
-				SenderID:  lastMsg.SenderID,
-				IsRead:    lastMsg.IsRead,
-			}
-		}
-
-		// Calculate unread count
-		// For Admin, unread count might not make sense in the same way, or maybe sum of unread messages?
-		// Let's keep it 0 for admin or count all unread messages in the chat?
-		// Requirement says "unread count (optional)".
-		// For regular user: messages not sent by me and not read.
-		if user.Role != models.RoleAdmin {
-			var unreadCount int64
-			s.db.Model(&models.Message{}).
-				Where("chat_id = ? AND is_read = ? AND sender_id != ?", chat.ID, false, userID).
-				Count(&unreadCount)
-			resp.UnreadCount = int(unreadCount)
-		}
-
-		response = append(response, resp)
+		response = append(response, s.ToChatResponse(chat, user))
 	}
 
 	return response, nil
+}
+
+// ToChatResponse converts a chat model to a response struct
+func (s *ChatService) ToChatResponse(chat models.Chat, currentUser models.User) ChatResponse {
+	resp := ChatResponse{
+		ID:        chat.ID,
+		OrderID:   chat.OrderID,
+		CreatedAt: chat.CreatedAt,
+		UpdatedAt: chat.UpdatedAt,
+	}
+
+	// Identify other participant
+	var otherParticipant *models.User
+
+	if currentUser.Role == models.RoleAdmin {
+		// For admin, just pick the first participant
+		if len(chat.Participants) > 0 {
+			otherParticipant = &chat.Participants[0]
+		}
+	} else {
+		for _, p := range chat.Participants {
+			if p.ID != currentUser.ID {
+				otherParticipant = &p
+				break
+			}
+		}
+	}
+
+	if otherParticipant == nil && len(chat.Participants) > 0 {
+		otherParticipant = &chat.Participants[0]
+	}
+
+	if otherParticipant != nil {
+		summary := &UserSummary{
+			ID:    otherParticipant.ID,
+			Email: otherParticipant.Email,
+			Role:  string(otherParticipant.Role),
+		}
+
+		// Fetch profile details
+		name, pic := s.getUserProfileDetails(otherParticipant.ID, otherParticipant.Role)
+		summary.Name = name
+		summary.ProfilePictureURL = pic
+
+		resp.OtherParticipant = summary
+	}
+
+	if len(chat.Messages) > 0 {
+		lastMsg := chat.Messages[0]
+		resp.LastMessage = &MessagePreview{
+			Content:   lastMsg.Content,
+			CreatedAt: lastMsg.CreatedAt,
+			SenderID:  lastMsg.SenderID,
+			IsRead:    lastMsg.IsRead,
+		}
+	}
+
+	// Calculate unread count
+	if currentUser.Role != models.RoleAdmin {
+		var unreadCount int64
+		s.db.Model(&models.Message{}).
+			Where("chat_id = ? AND is_read = ? AND sender_id != ?", chat.ID, false, currentUser.ID).
+			Count(&unreadCount)
+		resp.UnreadCount = int(unreadCount)
+	}
+
+	return resp
 }
 
 // GetChatMessages returns messages for a chat
@@ -274,6 +286,39 @@ func isOrderActor(user *models.User, order *models.Order) bool {
 	return false
 }
 
+func (s *ChatService) getUserProfileDetails(userID uuid.UUID, role models.UserRole) (string, string) {
+	switch role {
+	case models.RoleClient:
+		var p models.ClientProfile
+		if err := s.db.First(&p, "user_id = ?", userID).Error; err == nil {
+			pic := ""
+			if p.ProfilePictureURL != nil {
+				pic = *p.ProfilePictureURL
+			}
+			return p.FullName, pic
+		}
+	case models.RoleDriver:
+		var p models.DriverProfile
+		if err := s.db.First(&p, "user_id = ?", userID).Error; err == nil {
+			pic := ""
+			if p.ProfilePictureURL != nil {
+				pic = *p.ProfilePictureURL
+			}
+			return p.FullName, pic
+		}
+	case models.RoleVendor:
+		var p models.VendorProfile
+		if err := s.db.First(&p, "user_id = ?", userID).Error; err == nil {
+			pic := ""
+			if p.StoreBannerURL != nil {
+				pic = *p.StoreBannerURL
+			}
+			return p.StoreName, pic
+		}
+	}
+	return "User", ""
+}
+
 // Response structs
 type ChatResponse struct {
 	ID               uuid.UUID       `json:"id"`
@@ -286,9 +331,11 @@ type ChatResponse struct {
 }
 
 type UserSummary struct {
-	ID    uuid.UUID `json:"id"`
-	Email string    `json:"email"`
-	Role  string    `json:"role"`
+	ID                uuid.UUID `json:"id"`
+	Email             string    `json:"email"`
+	Role              string    `json:"role"`
+	Name              string    `json:"name"`
+	ProfilePictureURL string    `json:"profile_picture_url"`
 }
 
 type MessagePreview struct {
