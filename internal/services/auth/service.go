@@ -123,9 +123,6 @@ func (s *AuthService) Register(req RegisterRequest) (string, *MeResponse, error)
 		return "", nil, err
 	}
 
-	// Send Welcome Email
-	go s.sendWelcomeEmail(user.Email)
-
 	// Send OTP email (verification is still required even if we allow login)
 	go func() {
 		emailSubject := "Your GoPickup Verification Code"
@@ -369,6 +366,9 @@ func (s *AuthService) Login(req LoginRequest) (string, *MeResponse, error) {
 		return "", nil, err
 	}
 
+	// Send Welcome Email
+	go s.sendWelcomeEmail(user.Email)
+
 	return token, me, nil
 }
 
@@ -401,6 +401,9 @@ func (s *AuthService) VerifyOTP(req VerifyOTPRequest) (string, *MeResponse, erro
 	if err := db.DB.Save(&user).Error; err != nil {
 		return "", nil, err
 	}
+
+	// Send Welcome Email
+	go s.sendWelcomeEmail(user.Email)
 
 	// Generate token
 	token, err := utils.GenerateJWT(user.ID, string(user.Role), s.config.JWTSecret)

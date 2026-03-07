@@ -32,6 +32,8 @@ func main() {
 		&models.Bid{},
 		&models.Chat{},
 		&models.Message{},
+		&models.Wallet{},
+		&models.Transaction{},
 		&models.AuditLog{}, // Added AuditLog as it was likely missed in main.go or I should check if it exists
 	); err != nil {
 		log.Fatalf("Migration failed: %v", err)

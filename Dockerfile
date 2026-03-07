@@ -18,6 +18,7 @@ COPY . .
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/migrate ./cmd/migrate
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/seed ./cmd/seed
 
 # Runtime Stage
 FROM alpine:3.19
@@ -33,6 +34,7 @@ RUN adduser -D -g '' appuser
 # Copy the binaries from the builder stage
 COPY --from=builder /app/server .
 COPY --from=builder /app/migrate .
+COPY --from=builder /app/seed .
 COPY scripts/entrypoint.sh .
 RUN chmod +x entrypoint.sh
 

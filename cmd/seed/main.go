@@ -8,6 +8,7 @@ import (
 	"gopickup/internal/models"
 	"log"
 	"os"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -54,79 +55,193 @@ func main() {
 
 func seedAllAccounts() {
 	log.Println("Seeding test accounts...")
-	
-	// Admin
+
+	// 1. Admin
 	createAdminUser("admin@test.com", "Password123!")
 
-	// Client
-	clientID := createClientUser("client@test.com", "Password123!")
-
-	// Driver
-	createDriverUser("driver@test.com", "Password123!")
-
-	// Vendor
-	vendorID := createVendorUser("vendor@test.com", "Password123!")
+	// 2. Vendor
+	vendorID := createVendorUser("vendor@test.com", "Password123!", "Tech Haven", "Electronics & Gadgets")
+	var products []models.Product
 	if vendorID != uuid.Nil {
-		products := seedProducts(vendorID)
-		if clientID != uuid.Nil {
-			seedOrders(clientID, vendorID, products)
-		}
+		products = seedProducts(vendorID)
 	}
-	
-	log.Println("Seeding complete!")
+
+	// 3. Drivers
+	// Driver 1: Approved and Verified
+	driver1ID := createDriverUser("driver@test.com", "Password123!", "John Doe", "LAG-123-XY", true)
+	// Driver 2: Unapproved (for testing approval)
+	createDriverUser("newdriver@test.com", "Password123!", "Jane Smith", "ABJ-456-YZ", false)
+
+	// 4. Client
+	clientID := createClientUser("client@test.com", "Password123!", "Alice Wonderland")
+
+	// 5. Orders & Interactions
+	if clientID != uuid.Nil && vendorID != uuid.Nil && len(products) > 0 {
+		seedOrders(clientID, vendorID, driver1ID, products)
+		seedWallets(clientID, driver1ID)
+		seedChats(clientID, vendorID, driver1ID)
+	}
+
+	log.Println("Seeding complete! Log in with:")
+	log.Println("  Client: client@test.com / Password123!")
+	log.Println("  Driver: driver@test.com / Password123!")
+	log.Println("  Vendor: vendor@test.com / Password123!")
+	log.Println("  Admin:  admin@test.com  / Password123!")
 }
 
-func seedOrders(clientID, vendorID uuid.UUID, products []models.Product) {
-	if len(products) == 0 {
+func seedWallets(clientID, driverID uuid.UUID) {
+	log.Println("Seeding wallets...")
+	
+	// Client Wallet
+	clientWallet := models.Wallet{
+		UserID:   clientID,
+		Balance:  50000.00,
+		Currency: "NGN",
+	}
+	db.GetDB().Where(models.Wallet{UserID: clientID}).FirstOrCreate(&clientWallet)
+	
+	// Client Transactions
+	db.GetDB().Create(&models.Transaction{
+		WalletID:    clientWallet.ID,
+		Amount:      50000.00,
+		Type:        models.TransactionCredit,
+		Description: "Wallet Funding",
+		Status:      "success",
+		Reference:   "REF-" + uuid.New().String()[:8],
+	})
+	db.GetDB().Create(&models.Transaction{
+		WalletID:    clientWallet.ID,
+		Amount:      2500.00,
+		Type:        models.TransactionDebit,
+		Description: "Payment for Order #1234",
+		Status:      "success",
+		Reference:   "REF-" + uuid.New().String()[:8],
+	})
+
+	// Driver Wallet
+	driverWallet := models.Wallet{
+		UserID:   driverID,
+		Balance:  12500.00,
+		Currency: "NGN",
+	}
+	db.GetDB().Where(models.Wallet{UserID: driverID}).FirstOrCreate(&driverWallet)
+
+	// Driver Transactions
+	db.GetDB().Create(&models.Transaction{
+		WalletID:    driverWallet.ID,
+		Amount:      4500.00,
+		Type:        models.TransactionCredit,
+		Description: "Earnings for Order #5678",
+		Status:      "success",
+		Reference:   "REF-" + uuid.New().String()[:8],
+	})
+}
+
+func seedChats(clientID, vendorID, driverID uuid.UUID) {
+	log.Println("Seeding chats...")
+
+	// Chat 1: Client <-> Driver
+	chat1 := models.Chat{
+		Participants: []models.User{{ID: clientID}, {ID: driverID}},
+	}
+	if err := db.GetDB().Create(&chat1).Error; err == nil {
+		// Add Messages
+		messages := []models.Message{
+			{ChatID: chat1.ID, SenderID: clientID, Content: "Hi, where are you now?", IsRead: true, CreatedAt: time.Now().Add(-10 * time.Minute)},
+			{ChatID: chat1.ID, SenderID: driverID, Content: "I'm 5 mins away from pickup.", IsRead: true, CreatedAt: time.Now().Add(-9 * time.Minute)},
+			{ChatID: chat1.ID, SenderID: clientID, Content: "Okay, thanks!", IsRead: false, CreatedAt: time.Now().Add(-5 * time.Minute)},
+		}
+		for _, m := range messages {
+			db.GetDB().Create(&m)
+		}
+		
+		// Link participants manually since GORM might not handle the many2many creation perfectly with just ID structs in all versions
+		db.GetDB().Exec("INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING", chat1.ID, clientID)
+		db.GetDB().Exec("INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING", chat1.ID, driverID)
+	}
+
+	// Chat 2: Client <-> Vendor
+	chat2 := models.Chat{
+		Participants: []models.User{{ID: clientID}, {ID: vendorID}},
+	}
+	if err := db.GetDB().Create(&chat2).Error; err == nil {
+		db.GetDB().Create(&models.Message{
+			ChatID: chat2.ID, SenderID: clientID, Content: "Is the black headphone in stock?", IsRead: true, CreatedAt: time.Now().Add(-1 * time.Hour),
+		})
+		db.GetDB().Create(&models.Message{
+			ChatID: chat2.ID, SenderID: vendorID, Content: "Yes, we have 5 left.", IsRead: false, CreatedAt: time.Now().Add(-50 * time.Minute),
+		})
+		
+		db.GetDB().Exec("INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING", chat2.ID, clientID)
+		db.GetDB().Exec("INSERT INTO chat_participants (chat_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING", chat2.ID, vendorID)
+	}
+}
+
+func seedOrders(clientID, vendorID, driverID uuid.UUID, products []models.Product) {
+	if len(products) < 3 {
 		return
 	}
 
 	orders := []models.Order{
+		// Order 1: Pending
 		{
 			ClientID:           clientID,
 			VendorID:           vendorID,
-			TotalProductAmount: 30000.00,
+			TotalProductAmount: products[0].Price,
 			PaymentMethod:      models.PaymentCard,
-			PickupAddress:      "456 Market St",
-			DeliveryAddress:    "123 Client St",
+			PickupAddress:      "456 Market St, Lagos",
+			DeliveryAddress:    "123 Client St, Lagos",
 			Status:             models.OrderPending,
 			Items: []models.OrderItem{
-				{
-					ProductID: products[0].ID,
-					Name:      products[0].Name,
-					Price:     products[0].Price,
-					Quantity:  1,
-				},
-				{
-					ProductID: products[1].ID,
-					Name:      products[1].Name,
-					Price:     products[1].Price,
-					Quantity:  1,
-				},
+				{ProductID: products[0].ID, Name: products[0].Name, Price: products[0].Price, Quantity: 1},
 			},
 		},
+		// Order 2: Processing
 		{
 			ClientID:           clientID,
 			VendorID:           vendorID,
-			TotalProductAmount: 15000.00,
+			TotalProductAmount: products[1].Price * 2,
 			PaymentMethod:      models.PaymentWallet,
-			PickupAddress:      "456 Market St",
-			DeliveryAddress:    "789 Another St",
+			PickupAddress:      "456 Market St, Lagos",
+			DeliveryAddress:    "789 Another St, Abuja",
 			Status:             models.OrderProcessing,
 			Items: []models.OrderItem{
-				{
-					ProductID: products[2].ID,
-					Name:      products[2].Name,
-					Price:     products[2].Price,
-					Quantity:  1,
-				},
+				{ProductID: products[1].ID, Name: products[1].Name, Price: products[1].Price, Quantity: 2},
 			},
+		},
+		// Order 3: Searching Driver (Ready for Driver Dashboard)
+		{
+			ClientID:           clientID,
+			VendorID:           vendorID,
+			TotalProductAmount: products[2].Price,
+			PaymentMethod:      models.PaymentCard,
+			PickupAddress:      "Shop 12, Computer Village, Ikeja",
+			DeliveryAddress:    "15 Admiralty Way, Lekki",
+			Status:             models.OrderSearchingDriver,
+			Items: []models.OrderItem{
+				{ProductID: products[2].ID, Name: products[2].Name, Price: products[2].Price, Quantity: 1},
+			},
+		},
+		// Order 4: Delivered (History)
+		{
+			ClientID:           clientID,
+			VendorID:           vendorID,
+			DriverID:           &driverID,
+			TotalProductAmount: products[0].Price + products[1].Price,
+			PaymentMethod:      models.PaymentWallet,
+			PickupAddress:      "456 Market St, Lagos",
+			DeliveryAddress:    "123 Client St, Lagos",
+			Status:             models.OrderDelivered,
+			Items: []models.OrderItem{
+				{ProductID: products[0].ID, Name: products[0].Name, Price: products[0].Price, Quantity: 1},
+				{ProductID: products[1].ID, Name: products[1].Name, Price: products[1].Price, Quantity: 1},
+			},
+			CreatedAt: time.Now().Add(-24 * time.Hour), // Yesterday
 		},
 	}
 
 	for _, o := range orders {
 		o.ID = uuid.New()
-		// Items need ID
 		for i := range o.Items {
 			o.Items[i].ID = uuid.New()
 			o.Items[i].OrderID = o.ID
@@ -150,7 +265,7 @@ func seedProducts(vendorID uuid.UUID) []models.Product {
 			Category:      "Electronics",
 			StockQuantity: 50,
 			IsActive:      true,
-			ImageURL:      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8aGVhZHBob25lc3xlbnwwfHwwfHx8MA%3D%3D",
+			ImageURL:      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60",
 		},
 		{
 			VendorID:      vendorID,
@@ -160,7 +275,7 @@ func seedProducts(vendorID uuid.UUID) []models.Product {
 			Category:      "Food",
 			StockQuantity: 100,
 			IsActive:      true,
-			ImageURL:      "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8Y29mZmVlJTIwYmVhbnN8ZW58MHx8MHx8fDA%3D",
+			ImageURL:      "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=500&auto=format&fit=crop&q=60",
 		},
 		{
 			VendorID:      vendorID,
@@ -170,12 +285,32 @@ func seedProducts(vendorID uuid.UUID) []models.Product {
 			Category:      "Fashion",
 			StockQuantity: 25,
 			IsActive:      true,
-			ImageURL:      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvZXN8ZW58MHx8MHx8fDA%3D",
+			ImageURL:      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60",
+		},
+		{
+			VendorID:      vendorID,
+			Name:          "Smart Watch",
+			Description:   "Track your fitness and notifications on the go",
+			Price:         45000.00,
+			Category:      "Electronics",
+			StockQuantity: 30,
+			IsActive:      true,
+			ImageURL:      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60",
+		},
+		{
+			VendorID:      vendorID,
+			Name:          "Leather Backpack",
+			Description:   "Durable and stylish leather backpack for work or travel",
+			Price:         35000.00,
+			Category:      "Fashion",
+			StockQuantity: 15,
+			IsActive:      true,
+			ImageURL:      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=60",
 		},
 	}
 
 	for i := range products {
-		products[i].ID = uuid.New() // Ensure ID is set
+		products[i].ID = uuid.New()
 		if err := db.GetDB().Create(&products[i]).Error; err != nil {
 			log.Printf("Failed to create product %s: %v", products[i].Name, err)
 		} else {
@@ -185,7 +320,69 @@ func seedProducts(vendorID uuid.UUID) []models.Product {
 	return products
 }
 
+func createAdminUser(email, password string) {
+	createUser(email, password, "admin", true)
+	log.Printf("Admin user created/verified: %s", email)
+}
+
+func createClientUser(email, password, name string) uuid.UUID {
+	userID := createUser(email, password, "client", true)
+	if userID != uuid.Nil {
+		profile := models.ClientProfile{
+			UserID:      userID,
+			FullName:    name,
+			PhoneNumber: "08012345678",
+			Address:     "123 Client St, Lagos",
+		}
+		db.GetDB().FirstOrCreate(&profile, models.ClientProfile{UserID: userID})
+		log.Printf("Client user created: %s", email)
+	}
+	return userID
+}
+
+func createDriverUser(email, password, name, plate string, approved bool) uuid.UUID {
+	userID := createUser(email, password, "driver", true)
+	if userID != uuid.Nil {
+		profile := models.DriverProfile{
+			UserID:          userID,
+			FullName:        name,
+			PhoneNumber:     "08098765432",
+			LicenseNumber:   "LIC-" + plate,
+			VehicleType:     models.VehicleVan,
+			PlateNumber:     plate,
+			VehicleCapacity: 1000,
+			IsApproved:      approved,
+		}
+		db.GetDB().FirstOrCreate(&profile, models.DriverProfile{UserID: userID})
+		log.Printf("Driver user created: %s (Approved: %v)", email, approved)
+	}
+	return userID
+}
+
+func createVendorUser(email, password, storeName, businessType string) uuid.UUID {
+	userID := createUser(email, password, "vendor", true)
+	if userID != uuid.Nil {
+		profile := models.VendorProfile{
+			UserID:       userID,
+			StoreName:    storeName,
+			PhoneNumber:  "08055555555",
+			BusinessType: businessType,
+			Address:      "456 Market St, Lagos",
+			IsApproved:   true,
+		}
+		db.GetDB().FirstOrCreate(&profile, models.VendorProfile{UserID: userID})
+		log.Printf("Vendor user created: %s", email)
+	}
+	return userID
+}
+
 func createUser(email, password, role string, isVerified bool) uuid.UUID {
+	// Check if exists
+	var existing models.User
+	if err := db.GetDB().Where("email = ?", email).First(&existing).Error; err == nil {
+		return existing.ID
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatalf("Failed to hash password: %v", err)
@@ -198,94 +395,21 @@ func createUser(email, password, role string, isVerified bool) uuid.UUID {
 		PasswordHash: string(hashedPassword),
 		Role:         models.UserRole(role),
 		IsVerified:   isVerified,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
 	if err := db.GetDB().Create(&user).Error; err != nil {
-		log.Printf("Failed to create user %s (maybe exists?): %v", email, err)
-		// Try to fetch existing ID if creation failed
-		var existingUser models.User
-		if err := db.GetDB().Where("email = ?", email).First(&existingUser).Error; err == nil {
-			return existingUser.ID
-		}
+		log.Printf("Failed to create user %s: %v", email, err)
 		return uuid.Nil
 	}
-	log.Printf("User created: %s (%s)", email, role)
 	return userID
 }
 
-func createClientUser(email, password string) uuid.UUID {
-	uid := createUser(email, password, string(models.RoleClient), true)
-	if uid == uuid.Nil { return uuid.Nil }
-
-	profile := models.ClientProfile{
-		UserID:      uid,
-		FullName:    "Test Client",
-		PhoneNumber: "+1234567890",
-		Address:     "123 Client St",
-	}
-	if err := db.GetDB().Create(&profile).Error; err != nil {
-		log.Printf("Failed to create client profile: %v", err)
-	} else {
-		log.Printf("Client profile created for %s", email)
-	}
-	return uid
-}
-
-func createDriverUser(email, password string) {
-	uid := createUser(email, password, string(models.RoleDriver), true)
-	if uid == uuid.Nil { return }
-
-	profile := models.DriverProfile{
-		UserID:          uid,
-		FullName:        "Test Driver",
-		PhoneNumber:     "+1987654321",
-		LicenseNumber:   "DL12345678",
-		VehicleType:     models.VehicleVan,
-		PlateNumber:     "VAN-001",
-		VehicleCapacity: 1000,
-		IsApproved:      true,
-	}
-	if err := db.GetDB().Create(&profile).Error; err != nil {
-		log.Printf("Failed to create driver profile: %v", err)
-	} else {
-		log.Printf("Driver profile created for %s", email)
-	}
-}
-
-func createVendorUser(email, password string) uuid.UUID {
-	uid := createUser(email, password, string(models.RoleVendor), true)
-	if uid == uuid.Nil { return uuid.Nil }
-
-	profile := models.VendorProfile{
-		UserID:       uid,
-		StoreName:    "Test Store",
-		PhoneNumber:  "+1122334455",
-		BusinessType: "Retail",
-		Address:      "456 Market St",
-		IsApproved:   true,
-	}
-	if err := db.GetDB().Create(&profile).Error; err != nil {
-		log.Printf("Failed to create vendor profile: %v", err)
-	} else {
-		log.Printf("Vendor profile created for %s", email)
-	}
-	return uid
-}
-
-func createAdminUser(email, password string) {
-	createUser(email, password, string(models.RoleAdmin), true)
-}
-
 func verifyUserByEmail(email string) {
-	result := db.GetDB().Model(&models.User{}).
-		Where("email = ?", email).
-		Update("is_verified", true)
-
-	if result.Error != nil {
-		log.Printf("Failed to verify user: %v", result.Error)
-	} else if result.RowsAffected == 0 {
-		log.Printf("User not found: %s", email)
+	if err := db.GetDB().Model(&models.User{}).Where("email = ?", email).Update("is_verified", true).Error; err != nil {
+		log.Printf("Failed to verify user %s: %v", email, err)
 	} else {
-		log.Printf("User verified: %s", email)
+		log.Printf("User %s verified successfully", email)
 	}
 }
