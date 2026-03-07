@@ -58,6 +58,8 @@ func main() {
 			&models.Chat{},
 			&models.Message{},
 			&models.AuditLog{},
+			&models.Wallet{},
+			&models.Transaction{},
 		); err != nil {
 			log.Fatalf("Migration failed: %v", err)
 		}

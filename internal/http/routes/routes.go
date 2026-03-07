@@ -10,6 +10,7 @@ import (
 	orderHandler "gopickup/internal/http/handlers/order"
 	productHandler "gopickup/internal/http/handlers/product"
 	profileHandler "gopickup/internal/http/handlers/profile"
+	walletHandler "gopickup/internal/http/handlers/wallet"
 	wsHandler "gopickup/internal/http/handlers/websocket"
 	"gopickup/internal/http/middleware"
 	"gopickup/internal/models"
@@ -22,6 +23,7 @@ import (
 	"gopickup/internal/services/order"
 	"gopickup/internal/services/product"
 	"gopickup/internal/services/profile"
+	"gopickup/internal/services/wallet"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
@@ -46,6 +48,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	driverService := driver.NewDriverService(auditService)
 	notifService := notification.NewNotificationService(db.GetDB())
 	chatService := chat.NewChatService(db.GetDB(), notifService, auditService)
+	walletService := wallet.NewWalletService(db.GetDB())
 
 	// Handlers
 	authH := authHandler.NewAuthHandler(authService)
@@ -55,6 +58,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	driverH := driverHandler.NewDriverHandler(driverService)
 	wsH := wsHandler.NewHandler(notifService, orderService, driverService, db.GetDB(), cfg)
 	chatH := chatHandler.NewHandler(chatService)
+	walletH := walletHandler.NewWalletHandler(walletService)
 
 	// Public Routes
 	r.GET("/", handlers.HealthCheck)
@@ -176,6 +180,13 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				vendorGroup.GET("/dashboard", productH.GetVendorDashboard)
 				vendorGroup.PATCH("/orders/:id/status", orderH.VendorUpdateStatus)
 				vendorGroup.PATCH("/orders/:id/ready", orderH.VendorMarkReady)
+			}
+
+			// Wallet Routes
+			walletGroup := protected.Group("/wallet")
+			{
+				walletGroup.GET("/balance", walletH.GetBalance)
+				walletGroup.GET("/transactions", walletH.GetTransactions)
 			}
 		}
 	}
