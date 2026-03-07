@@ -28,7 +28,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	// Log the incoming request (excluding password)
 	// log.Printf("Register Request: Email=%s Role=%s", req.Email, req.Role)
 
-	user, err := h.service.Register(req)
+	token, user, err := h.service.Register(req)
 	if err != nil {
 		// Log the service error
 		// log.Printf("Register Service Error: %v", err)
@@ -39,7 +39,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Registration successful. Please check your email for OTP.",
 		"user":    user,
-		"token":   "", // Return empty token to prevent frontend crash if it expects this field
+		"token":   token,
 	})
 }
 

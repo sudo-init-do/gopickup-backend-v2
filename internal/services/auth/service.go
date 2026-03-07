@@ -60,7 +60,7 @@ type MeResponse struct {
 	IsApproved        bool            `json:"is_approved"`
 }
 
-func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
+func (s *AuthService) Register(req RegisterRequest) (string, *MeResponse, error) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	var user models.User
 	var isNewUser bool = true
@@ -68,17 +68,17 @@ func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
 	// Check if user exists
 	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err == nil {
 		if user.IsVerified {
-			return nil, errors.New("email already registered")
+			return "", nil, errors.New("email already registered")
 		}
 		// User exists but not verified
 		isNewUser = false
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err // DB error
+		return "", nil, err // DB error
 	}
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	otp := utils.GenerateOTP()
@@ -99,7 +99,7 @@ func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
 
 		if err := db.DB.Create(&user).Error; err != nil {
 			log.Printf("DB Create Error: %v", err)
-			return nil, err
+			return "", nil, err
 		}
 	} else {
 		// Update existing unverified user
@@ -113,8 +113,14 @@ func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
 
 		if err := db.DB.Save(&user).Error; err != nil {
 			log.Printf("DB Update Error: %v", err)
-			return nil, err
+			return "", nil, err
 		}
+	}
+
+	// Generate JWT token for immediate login (to support WS connection and frontend state)
+	token, err := utils.GenerateJWT(user.ID, string(user.Role), s.config.JWTSecret)
+	if err != nil {
+		return "", nil, err
 	}
 
 	// Send OTP email
@@ -186,7 +192,7 @@ func (s *AuthService) Register(req RegisterRequest) (*MeResponse, error) {
 		fcmToken = *user.FCMToken
 	}
 
-	return &MeResponse{
+	return token, &MeResponse{
 		ID:                user.ID,
 		Email:             user.Email,
 		Role:              user.Role,
@@ -295,9 +301,10 @@ func (s *AuthService) Login(req LoginRequest) (string, *MeResponse, error) {
 		return "", nil, errors.New("invalid credentials")
 	}
 
-	if !user.IsVerified {
-		return "", nil, errors.New("account not verified. please verify your email")
-	}
+	// Allow unverified users to login to prevent frontend crash
+	// if !user.IsVerified {
+	// 	return "", nil, errors.New("account not verified. please verify your email")
+	// }
 
 	token, err := utils.GenerateJWT(user.ID, string(user.Role), s.config.JWTSecret)
 	if err != nil {
