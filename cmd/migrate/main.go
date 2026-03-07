@@ -40,4 +40,7 @@ func main() {
 	}
 
 	log.Println("Migration completed successfully.")
+	
+	// Run custom migrations/fixes
+	db.RunCustomMigrations(db.GetDB())
 }

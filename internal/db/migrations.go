@@ -1,6 +1,7 @@
 package db
 
 import (
+	"gopickup/internal/models"
 	"log"
 
 	"gorm.io/gorm"
@@ -10,7 +11,53 @@ func RunCustomMigrations(db *gorm.DB) {
 	if db.Dialector.Name() == "postgres" {
 		log.Println("Running PostgreSQL specific migrations...")
 		fixUserPasswordSchema(db)
+		fixOrderTotalAmountSchema(db)
+		fixMessageSchema(db)
 		createProductSearchIndex(db)
+	}
+}
+
+func fixOrderTotalAmountSchema(db *gorm.DB) {
+	// Check if 'total_amount' column exists and make it nullable (it's likely a legacy column)
+	var count int64
+	db.Raw("SELECT count(*) FROM information_schema.columns WHERE table_name='orders' AND column_name='total_amount'").Scan(&count)
+	if count > 0 {
+		log.Println("Fixing 'orders' table schema: Dropping NOT NULL from 'total_amount' column...")
+		err := db.Exec(`ALTER TABLE orders ALTER COLUMN total_amount DROP NOT NULL`).Error
+		if err != nil {
+			log.Printf("Failed to alter 'total_amount' column: %v", err)
+		} else {
+			log.Println("Successfully made 'total_amount' column nullable.")
+		}
+	}
+}
+
+func fixMessageSchema(db *gorm.DB) {
+	// Check if 'messages' table exists and if 'id' is NOT uuid (i.e., bigint/integer)
+	var dataType string
+	db.Raw("SELECT data_type FROM information_schema.columns WHERE table_name='messages' AND column_name='id'").Scan(&dataType)
+	
+	if dataType != "" && dataType != "uuid" {
+		log.Printf("Detected incorrect schema for 'messages' table (ID type is %s). Recreating tables...", dataType)
+		
+		// Drop tables with cascade to handle foreign keys
+		if err := db.Exec(`DROP TABLE IF EXISTS messages CASCADE`).Error; err != nil {
+			log.Printf("Failed to drop messages table: %v", err)
+		}
+		if err := db.Exec(`DROP TABLE IF EXISTS chat_participants CASCADE`).Error; err != nil {
+			log.Printf("Failed to drop chat_participants table: %v", err)
+		}
+		if err := db.Exec(`DROP TABLE IF EXISTS chats CASCADE`).Error; err != nil {
+			log.Printf("Failed to drop chats table: %v", err)
+		}
+
+		// Re-run AutoMigrate for these tables
+		log.Println("Recreating tables with correct schema...")
+		if err := db.AutoMigrate(&models.Chat{}, &models.Message{}); err != nil {
+			log.Printf("Failed to recreate tables: %v", err)
+		} else {
+			log.Println("Successfully recreated 'chats' and 'messages' tables with UUIDs.")
+		}
 	}
 }
 
