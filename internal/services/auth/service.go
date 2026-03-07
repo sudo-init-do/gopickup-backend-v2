@@ -374,6 +374,8 @@ func (s *AuthService) Login(req LoginRequest) (string, *MeResponse, error) {
 
 func (s *AuthService) VerifyOTP(req VerifyOTPRequest) (string, *MeResponse, error) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.OTP = strings.TrimSpace(req.OTP) // Trim whitespace from OTP input
+
 	var user models.User
 	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
 		return "", nil, errors.New("user not found")
@@ -383,7 +385,9 @@ func (s *AuthService) VerifyOTP(req VerifyOTPRequest) (string, *MeResponse, erro
 		return "", nil, errors.New("user already verified")
 	}
 
+	// Compare OTP (ensure case-insensitive for robustness, though usually numeric)
 	if user.OTPCode != req.OTP {
+		log.Printf("OTP Verification Failed for %s: Expected '%s', Got '%s'", req.Email, user.OTPCode, req.OTP)
 		return "", nil, errors.New("invalid OTP")
 	}
 
