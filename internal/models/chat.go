@@ -13,13 +13,13 @@ type Chat struct {
 
 	// For simplicity in this phase, we'll rely on Participants table or logic.
 	// But standard GORM many-to-many:
-	Participants []User `gorm:"many2many:chat_participants;" json:"participants"`
+	Participants []User `gorm:"many2many:chat_participants;" json:"participants,omitempty"`
 
-	Messages []Message `gorm:"foreignKey:ChatID" json:"messages"`
+	Messages []Message `gorm:"foreignKey:ChatID" json:"messages,omitempty"`
 
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt *time.Time     `gorm:"index" json:"deleted_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `gorm:"index" json:"-"`
 }
 
 func (c *Chat) BeforeCreate(tx *gorm.DB) (err error) {
@@ -36,9 +36,9 @@ type Message struct {
 	Content  string    `gorm:"type:text;not null" json:"content"`
 	IsRead   bool      `gorm:"default:false;index" json:"is_read"` // Indexed for unread count
 
-	CreatedAt time.Time      `gorm:"index" json:"created_at"` // Indexed for sorting
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt *time.Time     `gorm:"index" json:"deleted_at"`
+	CreatedAt time.Time  `gorm:"index" json:"created_at"` // Indexed for sorting
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `gorm:"index" json:"-"`
 }
 
 func (m *Message) BeforeCreate(tx *gorm.DB) (err error) {

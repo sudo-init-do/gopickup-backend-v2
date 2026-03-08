@@ -49,7 +49,6 @@ func (s *WalletService) GetTransactions(userID uuid.UUID, page, limit int) ([]mo
 		return nil, 0, err
 	}
 
-	var transactions []models.Transaction
 	var total int64
 
 	offset := (page - 1) * limit
@@ -58,6 +57,7 @@ func (s *WalletService) GetTransactions(userID uuid.UUID, page, limit int) ([]mo
 		return nil, 0, err
 	}
 
+	transactions := []models.Transaction{}
 	if err := s.db.Where("wallet_id = ?", wallet.ID).
 		Order("created_at desc").
 		Offset(offset).

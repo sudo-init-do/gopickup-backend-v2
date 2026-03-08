@@ -143,7 +143,7 @@ func (s *ChatService) GetUserChats(userID uuid.UUID, page, limit int) ([]ChatRes
 		return nil, err
 	}
 
-	var response []ChatResponse
+	response := []ChatResponse{}
 	for _, chat := range chats {
 		response = append(response, s.ToChatResponse(chat, user))
 	}
@@ -242,7 +242,7 @@ func (s *ChatService) GetChatMessages(chatID, userID uuid.UUID, page, limit int)
 		}
 	}
 
-	var messages []models.Message
+	messages := []models.Message{}
 	offset := (page - 1) * limit
 
 	// Order by newest first
