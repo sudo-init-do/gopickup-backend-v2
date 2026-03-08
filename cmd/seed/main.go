@@ -307,6 +307,36 @@ func seedProducts(vendorID uuid.UUID) []models.Product {
 			IsActive:      true,
 			ImageURL:      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=60",
 		},
+		{
+			VendorID:      vendorID,
+			Name:          "Dangote Cement",
+			Description:   "High-quality cement for all construction needs",
+			Price:         8500.00,
+			Category:      "Cement",
+			StockQuantity: 500,
+			IsActive:      true,
+			ImageURL:      "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=60",
+		},
+		{
+			VendorID:      vendorID,
+			Name:          "Reinforcement Steel Bars",
+			Description:   "12mm TMT steel bars for structural strength",
+			Price:         12000.00,
+			Category:      "Steel",
+			StockQuantity: 200,
+			IsActive:      true,
+			ImageURL:      "https://images.unsplash.com/photo-1533000932845-97191147076d?w=500&auto=format&fit=crop&q=60",
+		},
+		{
+			VendorID:      vendorID,
+			Name:          "Plumbing Pipes (PVC)",
+			Description:   "Durable PVC pipes for drainage and water supply",
+			Price:         2500.00,
+			Category:      "Plumbing",
+			StockQuantity: 150,
+			IsActive:      true,
+			ImageURL:      "https://images.unsplash.com/photo-1581094288338-2314dddb7ec4?w=500&auto=format&fit=crop&q=60",
+		},
 	}
 
 	for i := range products {
