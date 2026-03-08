@@ -60,7 +60,7 @@ func seedAllAccounts() {
 	createAdminUser("admin@test.com", "Password123!")
 
 	// 2. Vendor
-	vendorID := createVendorUser("vendor@test.com", "Password123!", "Tech Haven", "Electronics & Gadgets")
+	vendorID := createVendorUser("vendor@test.com", "Password123!", "Tech Haven", "08055555555", "Electronics & Gadgets")
 	var products []models.Product
 	if vendorID != uuid.Nil {
 		products = seedProducts(vendorID)
@@ -68,12 +68,12 @@ func seedAllAccounts() {
 
 	// 3. Drivers
 	// Driver 1: Approved and Verified
-	driver1ID := createDriverUser("driver@test.com", "Password123!", "John Doe", "LAG-123-XY", true)
+	driver1ID := createDriverUser("driver@test.com", "Password123!", "John Doe", "08098765432", "LAG-123-XY", true)
 	// Driver 2: Unapproved (for testing approval)
-	createDriverUser("newdriver@test.com", "Password123!", "Jane Smith", "ABJ-456-YZ", false)
+	createDriverUser("newdriver@test.com", "Password123!", "Jane Smith", "08098765433", "ABJ-456-YZ", false)
 
 	// 4. Client
-	clientID := createClientUser("client@test.com", "Password123!", "Alice Wonderland")
+	clientID := createClientUser("client@test.com", "Password123!", "Alice Wonderland", "08012345678")
 
 	// 5. Orders & Interactions
 	if clientID != uuid.Nil && vendorID != uuid.Nil && len(products) > 0 {
@@ -325,13 +325,13 @@ func createAdminUser(email, password string) {
 	log.Printf("Admin user created/verified: %s", email)
 }
 
-func createClientUser(email, password, name string) uuid.UUID {
+func createClientUser(email, password, name, phone string) uuid.UUID {
 	userID := createUser(email, password, "client", true)
 	if userID != uuid.Nil {
 		profile := models.ClientProfile{
 			UserID:      userID,
 			FullName:    name,
-			PhoneNumber: "08012345678",
+			PhoneNumber: phone,
 			Address:     "123 Client St, Lagos",
 		}
 		db.GetDB().FirstOrCreate(&profile, models.ClientProfile{UserID: userID})
@@ -340,13 +340,13 @@ func createClientUser(email, password, name string) uuid.UUID {
 	return userID
 }
 
-func createDriverUser(email, password, name, plate string, approved bool) uuid.UUID {
+func createDriverUser(email, password, name, phone, plate string, approved bool) uuid.UUID {
 	userID := createUser(email, password, "driver", true)
 	if userID != uuid.Nil {
 		profile := models.DriverProfile{
 			UserID:          userID,
 			FullName:        name,
-			PhoneNumber:     "08098765432",
+			PhoneNumber:     phone,
 			LicenseNumber:   "LIC-" + plate,
 			VehicleType:     models.VehicleVan,
 			PlateNumber:     plate,
@@ -359,13 +359,13 @@ func createDriverUser(email, password, name, plate string, approved bool) uuid.U
 	return userID
 }
 
-func createVendorUser(email, password, storeName, businessType string) uuid.UUID {
+func createVendorUser(email, password, storeName, phone, businessType string) uuid.UUID {
 	userID := createUser(email, password, "vendor", true)
 	if userID != uuid.Nil {
 		profile := models.VendorProfile{
 			UserID:       userID,
 			StoreName:    storeName,
-			PhoneNumber:  "08055555555",
+			PhoneNumber:  phone,
 			BusinessType: businessType,
 			Address:      "456 Market St, Lagos",
 			IsApproved:   true,
