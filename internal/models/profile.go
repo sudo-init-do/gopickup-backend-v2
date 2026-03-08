@@ -19,47 +19,47 @@ const (
 )
 
 type ClientProfile struct {
-	UserID            uuid.UUID `gorm:"type:uuid;primaryKey"`
-	FullName          string    `gorm:"not null"`
-	PhoneNumber       string    `gorm:"unique;not null"`
-	Address           string    `gorm:"not null"`
-	ProfilePictureURL *string
+	UserID            uuid.UUID `gorm:"type:uuid;primaryKey" json:"user_id"`
+	FullName          string    `gorm:"not null" json:"full_name"`
+	PhoneNumber       string    `gorm:"unique;not null" json:"phone_number"`
+	Address           string    `gorm:"not null" json:"address"`
+	ProfilePictureURL *string   `json:"profile_picture_url,omitempty"`
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type DriverProfile struct {
-	UserID             uuid.UUID   `gorm:"type:uuid;primaryKey"`
-	FullName           string      `gorm:"not null"`
-	PhoneNumber        string      `gorm:"unique;not null"`
-	LicenseNumber      string      `gorm:"unique;not null"`
-	VehicleType        VehicleType `gorm:"type:varchar(50);not null"`
-	PlateNumber        string      `gorm:"unique;not null"`
-	VehicleCapacity    float64     `gorm:"not null"` // Assuming capacity is a number (e.g., tons or kg)
-	IsApproved         bool        `gorm:"default:false"`
-	CurrentLocationLat *float64
-	CurrentLocationLng *float64
+	UserID             uuid.UUID   `gorm:"type:uuid;primaryKey" json:"user_id"`
+	FullName           string      `gorm:"not null" json:"full_name"`
+	PhoneNumber        string      `gorm:"unique;not null" json:"phone_number"`
+	LicenseNumber      string      `gorm:"unique;not null" json:"license_number"`
+	VehicleType        VehicleType `gorm:"type:varchar(50);not null" json:"vehicle_type"`
+	PlateNumber        string      `gorm:"unique;not null" json:"plate_number"`
+	VehicleCapacity    float64     `gorm:"not null" json:"vehicle_capacity"` // Assuming capacity is a number (e.g., tons or kg)
+	IsApproved         bool        `gorm:"default:false" json:"is_approved"`
+	CurrentLocationLat *float64    `json:"current_location_lat,omitempty"`
+	CurrentLocationLng *float64    `json:"current_location_lng,omitempty"`
 	// Location field (PostGIS) omitted for now to keep simple compatibility with SQLite for tests,
 	// but can be added if Postgres is strictly enforced.
 	// We will rely on Lat/Lng for API logic for now.
 
-	ProfilePictureURL *string
+	ProfilePictureURL *string `json:"profile_picture_url,omitempty"`
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type VendorProfile struct {
-	UserID         uuid.UUID `gorm:"type:uuid;primaryKey"`
-	StoreName      string    `gorm:"not null"`
-	PhoneNumber    string    `gorm:"unique;not null"`
-	BusinessType   string    `gorm:"not null"`
-	Address        string    `gorm:"not null"`
-	StoreBannerURL *string
-	IsApproved     bool      `gorm:"default:false"`
-	Products       []Product `gorm:"foreignKey:VendorID" json:"-"`
+	UserID         uuid.UUID `gorm:"type:uuid;primaryKey" json:"user_id"`
+	StoreName      string    `gorm:"not null" json:"store_name"`
+	PhoneNumber    string    `gorm:"unique;not null" json:"phone_number"`
+	BusinessType   string    `gorm:"not null" json:"business_type"`
+	Address        string    `gorm:"not null" json:"address"`
+	StoreBannerURL *string   `json:"store_banner_url,omitempty"`
+	IsApproved     bool      `gorm:"default:false" json:"is_approved"`
+	Products       []Product `gorm:"foreignKey:VendorID" json:"products,omitempty"`
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

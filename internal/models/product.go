@@ -8,20 +8,20 @@ import (
 )
 
 type Product struct {
-	ID            uuid.UUID     `gorm:"type:uuid;primaryKey"`
-	VendorID      uuid.UUID     `gorm:"type:uuid;not null;index"`
-	Vendor        VendorProfile `gorm:"foreignKey:VendorID;references:UserID"` // Association
-	Name          string        `gorm:"not null;index"` // Indexed for search
-	Description   string        `gorm:"type:text"`
-	Price         float64       `gorm:"type:decimal(10,2);not null;check:price >= 0;index"` // Indexed for filtering
-	Category      string        `gorm:"not null;index"`
-	StockQuantity int           `gorm:"not null;check:stock_quantity >= 0"`
-	ImageURL      string
-	IsActive      bool `gorm:"default:true;index"`
+	ID            uuid.UUID     `gorm:"type:uuid;primaryKey" json:"id"`
+	VendorID      uuid.UUID     `gorm:"type:uuid;not null;index" json:"vendor_id"`
+	Vendor        VendorProfile `gorm:"foreignKey:VendorID;references:UserID" json:"vendor,omitempty"` // Association
+	Name          string        `gorm:"not null;index" json:"name"` // Indexed for search
+	Description   string        `gorm:"type:text" json:"description"`
+	Price         float64       `gorm:"type:decimal(10,2);not null;check:price >= 0;index" json:"price"` // Indexed for filtering
+	Category      string        `gorm:"not null;index" json:"category"`
+	StockQuantity int           `gorm:"not null;check:stock_quantity >= 0" json:"stock_quantity"`
+	ImageURL      string        `json:"image_url"`
+	IsActive      bool          `gorm:"default:true;index" json:"is_active"`
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time `gorm:"index"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `gorm:"index" json:"-"`
 }
 
 // Ensure database constraints are applied

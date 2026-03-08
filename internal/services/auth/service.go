@@ -366,9 +366,6 @@ func (s *AuthService) Login(req LoginRequest) (string, *MeResponse, error) {
 		return "", nil, err
 	}
 
-	// Send Welcome Email
-	go s.sendWelcomeEmail(user.Email)
-
 	return token, me, nil
 }
 
