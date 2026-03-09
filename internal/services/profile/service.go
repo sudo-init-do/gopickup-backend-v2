@@ -9,6 +9,7 @@ import (
 	"gopickup/internal/models"
 	"gopickup/internal/services/email"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -83,13 +84,30 @@ func (s *ProfileService) CreateClientProfile(userID uuid.UUID, req CreateClientP
 		return errors.New("user is not a client")
 	}
 
-	// Check if profile exists
-	var existing models.ClientProfile
-	if err := db.DB.First(&existing, userID).Error; err == nil {
-		return errors.New("profile already exists")
+	// 1. Check if the phone number is already taken by ANOTHER user
+	var otherProfile models.ClientProfile
+	if err := db.DB.Where("phone_number = ? AND user_id != ?", req.PhoneNumber, userID).First(&otherProfile).Error; err == nil {
+		return errors.New("this phone number is already registered with another account")
 	}
 
-	profile := models.ClientProfile{
+	// 2. Upsert logic: Update if exists, create if not
+	var profile models.ClientProfile
+	err := db.DB.Where("user_id = ?", userID).First(&profile).Error
+
+	if err == nil {
+		// Update existing profile
+		profile.FullName = req.FullName
+		profile.PhoneNumber = req.PhoneNumber
+		profile.Address = req.Address
+		if req.ProfilePictureURL != nil {
+			profile.ProfilePictureURL = req.ProfilePictureURL
+		}
+		profile.UpdatedAt = time.Now()
+		return db.DB.Save(&profile).Error
+	}
+
+	// Create new profile
+	profile = models.ClientProfile{
 		UserID:            userID,
 		FullName:          req.FullName,
 		PhoneNumber:       req.PhoneNumber,
@@ -97,7 +115,13 @@ func (s *ProfileService) CreateClientProfile(userID uuid.UUID, req CreateClientP
 		ProfilePictureURL: req.ProfilePictureURL,
 	}
 
-	return db.DB.Create(&profile).Error
+	if err := db.DB.Create(&profile).Error; err != nil {
+		if strings.Contains(err.Error(), "uni_client_profiles_phone_number") {
+			return errors.New("this phone number is already in use")
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *ProfileService) CreateDriverProfile(userID uuid.UUID, req CreateDriverProfileRequest) error {
@@ -110,13 +134,32 @@ func (s *ProfileService) CreateDriverProfile(userID uuid.UUID, req CreateDriverP
 		return errors.New("user is not a driver")
 	}
 
-	// Check if profile exists
-	var existing models.DriverProfile
-	if err := db.DB.First(&existing, userID).Error; err == nil {
-		return errors.New("profile already exists")
+	// 1. Check if the phone number is already taken by ANOTHER user
+	var otherProfile models.DriverProfile
+	if err := db.DB.Where("phone_number = ? AND user_id != ?", req.PhoneNumber, userID).First(&otherProfile).Error; err == nil {
+		return errors.New("this phone number is already registered with another account")
 	}
 
-	profile := models.DriverProfile{
+	// 2. Upsert logic
+	var profile models.DriverProfile
+	err := db.DB.Where("user_id = ?", userID).First(&profile).Error
+
+	if err == nil {
+		// Update existing
+		profile.FullName = req.FullName
+		profile.PhoneNumber = req.PhoneNumber
+		profile.LicenseNumber = req.LicenseNumber
+		profile.VehicleType = req.VehicleType
+		profile.PlateNumber = req.PlateNumber
+		profile.VehicleCapacity = req.VehicleCapacity
+		if req.ProfilePictureURL != nil {
+			profile.ProfilePictureURL = req.ProfilePictureURL
+		}
+		profile.UpdatedAt = time.Now()
+		return db.DB.Save(&profile).Error
+	}
+
+	profile = models.DriverProfile{
 		UserID:            userID,
 		FullName:          req.FullName,
 		PhoneNumber:       req.PhoneNumber,
@@ -124,11 +167,23 @@ func (s *ProfileService) CreateDriverProfile(userID uuid.UUID, req CreateDriverP
 		VehicleType:       req.VehicleType,
 		PlateNumber:       req.PlateNumber,
 		VehicleCapacity:   req.VehicleCapacity,
-		IsApproved:        false, // Default
+		IsApproved:        false,
 		ProfilePictureURL: req.ProfilePictureURL,
 	}
 
-	return db.DB.Create(&profile).Error
+	if err := db.DB.Create(&profile).Error; err != nil {
+		if strings.Contains(err.Error(), "uni_driver_profiles_phone_number") {
+			return errors.New("this phone number is already in use")
+		}
+		if strings.Contains(err.Error(), "uni_driver_profiles_license_number") {
+			return errors.New("this license number is already registered")
+		}
+		if strings.Contains(err.Error(), "uni_driver_profiles_plate_number") {
+			return errors.New("this plate number is already registered")
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *ProfileService) CreateVendorProfile(userID uuid.UUID, req CreateVendorProfileRequest) error {
@@ -141,23 +196,46 @@ func (s *ProfileService) CreateVendorProfile(userID uuid.UUID, req CreateVendorP
 		return errors.New("user is not a vendor")
 	}
 
-	// Check if profile exists
-	var existing models.VendorProfile
-	if err := db.DB.First(&existing, userID).Error; err == nil {
-		return errors.New("profile already exists")
+	// 1. Check if the phone number is already taken by ANOTHER user
+	var otherProfile models.VendorProfile
+	if err := db.DB.Where("phone_number = ? AND user_id != ?", req.PhoneNumber, userID).First(&otherProfile).Error; err == nil {
+		return errors.New("this phone number is already registered with another account")
 	}
 
-	profile := models.VendorProfile{
+	// 2. Upsert logic
+	var profile models.VendorProfile
+	err := db.DB.Where("user_id = ?", userID).First(&profile).Error
+
+	if err == nil {
+		// Update existing
+		profile.StoreName = req.StoreName
+		profile.PhoneNumber = req.PhoneNumber
+		profile.BusinessType = req.BusinessType
+		profile.Address = req.Address
+		if req.StoreBannerURL != nil {
+			profile.StoreBannerURL = req.StoreBannerURL
+		}
+		profile.UpdatedAt = time.Now()
+		return db.DB.Save(&profile).Error
+	}
+
+	profile = models.VendorProfile{
 		UserID:         userID,
 		StoreName:      req.StoreName,
 		PhoneNumber:    req.PhoneNumber,
 		BusinessType:   req.BusinessType,
 		Address:        req.Address,
 		StoreBannerURL: req.StoreBannerURL,
-		IsApproved:     false, // Default
+		IsApproved:     false,
 	}
 
-	return db.DB.Create(&profile).Error
+	if err := db.DB.Create(&profile).Error; err != nil {
+		if strings.Contains(err.Error(), "uni_vendor_profiles_phone_number") {
+			return errors.New("this phone number is already in use")
+		}
+		return err
+	}
+	return nil
 }
 
 // Update method
