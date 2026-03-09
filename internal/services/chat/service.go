@@ -332,8 +332,8 @@ func (s *ChatService) getUserProfileDetails(userID uuid.UUID, role models.UserRo
 type ChatResponse struct {
 	ID               uuid.UUID       `json:"id"`
 	OrderID          *uuid.UUID      `json:"order_id,omitempty"`
-	OtherParticipant *UserSummary    `json:"other_participant"`
-	LastMessage      *MessagePreview `json:"last_message"`
+	OtherParticipant *UserSummary    `json:"other_participant,omitempty"`
+	LastMessage      *MessagePreview `json:"last_message,omitempty"`
 	UnreadCount      int             `json:"unread_count"`
 	CreatedAt        time.Time       `json:"created_at"`
 	UpdatedAt        time.Time       `json:"updated_at"`
@@ -344,7 +344,7 @@ type UserSummary struct {
 	Email             string    `json:"email"`
 	Role              string    `json:"role"`
 	Name              string    `json:"name"`
-	ProfilePictureURL string    `json:"profile_picture_url"`
+	ProfilePictureURL string    `json:"profile_picture_url"` // Updated field for consistency
 }
 
 type MessagePreview struct {

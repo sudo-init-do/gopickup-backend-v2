@@ -17,9 +17,9 @@ type Chat struct {
 
 	Messages []Message `gorm:"foreignKey:ChatID" json:"messages,omitempty"`
 
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `gorm:"index" json:"-"`
+	CreatedAt time.Time  `gorm:"index" json:"created_at"` // Indexed for sorting
+	UpdatedAt time.Time  `json:"updated_at"` 
+	DeletedAt *time.Time `gorm:"index" json:"-"` 
 }
 
 func (c *Chat) BeforeCreate(tx *gorm.DB) (err error) {
