@@ -10,6 +10,7 @@ import (
 	orderHandler "gopickup/internal/http/handlers/order"
 	productHandler "gopickup/internal/http/handlers/product"
 	profileHandler "gopickup/internal/http/handlers/profile"
+	uploadHandler "gopickup/internal/http/handlers/upload"
 	walletHandler "gopickup/internal/http/handlers/wallet"
 	wsHandler "gopickup/internal/http/handlers/websocket"
 	"gopickup/internal/http/middleware"
@@ -27,6 +28,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
+	"os"
+	"log"
 )
 
 func SetupRouter(cfg *config.Config) *gin.Engine {
@@ -59,6 +62,12 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	wsH := wsHandler.NewHandler(notifService, orderService, driverService, db.GetDB(), cfg)
 	chatH := chatHandler.NewHandler(chatService)
 	walletH := walletHandler.NewWalletHandler(walletService)
+	uploadH := uploadHandler.NewUploadHandler()
+
+	if err := os.MkdirAll("uploads", os.ModePerm); err != nil {
+		log.Printf("Failed to create uploads directory: %v", err)
+	}
+	r.Static("/uploads", "./uploads")
 
 	// Public Routes
 	r.GET("/", handlers.HealthCheck)
@@ -142,6 +151,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				clientGroup.GET("/:id/bids", orderH.GetBids)
 				clientGroup.POST("/:id/bids/:bid_id/accept", orderH.AcceptBid)
 			}
+
+			// Global Protected Upload Route
+			protected.POST("/upload", uploadH.UploadFile)
 
 			// Driver Routes
 			driverGroup := protected.Group("/driver")

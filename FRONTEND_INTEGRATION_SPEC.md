@@ -65,7 +65,7 @@ Authorization: Bearer <your_jwt_token>
 {
   "error": "Description of the error"
 }
-```
+
 **Common Status Codes**:
 - `200 OK`: Success
 - `201 Created`: Resource created
@@ -435,16 +435,34 @@ Listen for these JSON messages from the server.
 
 ---
 
-## 12. Feature Flags & Configuration
+## 12. File Upload APIs
+
+### 12.1 Upload Image
+`POST /upload`
+**Content-Type**: `multipart/form-data`
+**Request**:
+- `image`: The image file to upload (Field name: `image`, supported extensions: `.jpg`, `.jpeg`, `.png`, `.webp`)
+
+**Response**:
+```json
+{
+  "message": "File uploaded successfully",
+  "image_url": "/uploads/123e4567-e89b-12d3-a456-426614174000.png"
+}
+```
+
+---
+
+## 13. Feature Flags & Configuration
 - **Max Image Size**: 10MB
 - **Rate Limits**:
   - Auth: 5 requests / 10s
   - Driver Location: 1 update / 5s
   - Chat: 1 message / 1s
 
-## 13. Frontend Flows
+## 14. Frontend Flows
 
-### 13.1 Order Lifecycle (Client View)
+### 14.1 Order Lifecycle (Client View)
 1.  **Browse**: `GET /products`
 2.  **Checkout**: `POST /orders/checkout` -> Order `pending`
 3.  **Wait for Vendor**: Listen for `order_status_updated` (`processing` -> `searching_driver`)
@@ -463,7 +481,7 @@ Listen for these JSON messages from the server.
 
 ---
 
-## 14. QA Smoke Test Checklist
+## 15. QA Smoke Test Checklist
 - [ ] Register new Client account
 - [ ] Register new Driver account & approve via Admin API
 - [ ] Register new Vendor account & create 1 product
