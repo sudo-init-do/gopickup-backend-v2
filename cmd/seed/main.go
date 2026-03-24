@@ -57,7 +57,7 @@ func seedAllAccounts() {
 	log.Println("Seeding test accounts...")
 
 	// 1. Admin
-	createAdminUser("admin@test.com", "Password123!")
+	createAdminUser("admin@gopickup.com.ng", "AdminSecurePassword123!")
 
 	// 2. Vendor
 	vendorID := createVendorUser("vendor@test.com", "Password123!", "Tech Haven", "08055555555", "Electronics & Gadgets")
@@ -86,7 +86,7 @@ func seedAllAccounts() {
 	log.Println("  Client: client@test.com / Password123!")
 	log.Println("  Driver: driver@test.com / Password123!")
 	log.Println("  Vendor: vendor@test.com / Password123!")
-	log.Println("  Admin:  admin@test.com  / Password123!")
+	log.Println("  Admin:  admin@gopickup.com.ng  / AdminSecurePassword123!")
 }
 
 func seedWallets(clientID, driverID uuid.UUID) {
