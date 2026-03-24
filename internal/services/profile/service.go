@@ -167,7 +167,7 @@ func (s *ProfileService) CreateDriverProfile(userID uuid.UUID, req CreateDriverP
 		VehicleType:       req.VehicleType,
 		PlateNumber:       req.PlateNumber,
 		VehicleCapacity:   req.VehicleCapacity,
-		IsApproved:        false,
+		IsApproved:        true,
 		ProfilePictureURL: req.ProfilePictureURL,
 	}
 
@@ -226,7 +226,7 @@ func (s *ProfileService) CreateVendorProfile(userID uuid.UUID, req CreateVendorP
 		BusinessType:   req.BusinessType,
 		Address:        req.Address,
 		StoreBannerURL: req.StoreBannerURL,
-		IsApproved:     false,
+		IsApproved:     true,
 	}
 
 	if err := db.DB.Create(&profile).Error; err != nil {
