@@ -403,6 +403,109 @@ func (s *AuthService) AdminLogin(req LoginRequest) (string, *MeResponse, error) 
 	return token, me, nil
 }
 
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Email       string `json:"email" binding:"required,email"`
+	OTP         string `json:"otp" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+// ForgotPassword sends an OTP to the user's email for password reset.
+func (s *AuthService) ForgotPassword(req ForgotPasswordRequest) error {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	var user models.User
+	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		// Don't reveal whether the email exists — return nil silently
+		return nil
+	}
+
+	otp := utils.GenerateOTP()
+	user.OTPCode = otp
+	user.OTPExpiresAt = time.Now().Add(15 * time.Minute)
+	if err := db.DB.Save(&user).Error; err != nil {
+		return err
+	}
+
+	go func() {
+		subject := "Reset Your GoPickup Password"
+		htmlBody := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f6f9fc; margin: 0; padding: 0; color: #333333; }
+    .wrapper { width: 100%%; background-color: #f6f9fc; padding: 40px 0; }
+    .container { max-width: 460px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); overflow: hidden; }
+    .header { padding: 40px 40px 20px 40px; text-align: center; }
+    .logo { font-size: 24px; font-weight: 800; color: #111111; letter-spacing: -0.5px; }
+    .content { padding: 0 40px 40px 40px; text-align: center; }
+    .title { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #1a1a1a; }
+    .text { font-size: 15px; line-height: 1.6; color: #4e5c6e; margin-bottom: 32px; }
+    .code-container { background-color: #fff3f3; border-radius: 12px; padding: 24px; margin-bottom: 32px; letter-spacing: 8px; font-family: 'Courier New', monospace; font-size: 32px; font-weight: 700; color: #e53935; }
+    .footer { padding: 20px; text-align: center; color: #8898aa; font-size: 12px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header"><div class="logo">GoPickup</div></div>
+      <div class="content">
+        <div class="title">Password Reset Request</div>
+        <p class="text">We received a request to reset your password. Use the code below. It expires in <strong>15 minutes</strong>.</p>
+        <div class="code-container">%s</div>
+        <p class="text" style="font-size:13px;color:#8898aa;">If you didn't request this, you can safely ignore this email. Your password will not change.</p>
+      </div>
+    </div>
+    <div class="footer">&copy; 2026 GoPickup Inc.</div>
+  </div>
+</body>
+</html>`, otp)
+		textBody := fmt.Sprintf("Your GoPickup password reset code is: %s\n\nThis code expires in 15 minutes. If you didn't request a reset, ignore this email.", otp)
+		if err := s.emailService.SendEmail(user.Email, subject, htmlBody, textBody); err != nil {
+			log.Printf("Failed to send password reset email to %s: %v", user.Email, err)
+		}
+	}()
+
+	return nil
+}
+
+// ResetPassword validates the OTP and updates the user's password.
+func (s *AuthService) ResetPassword(req ResetPasswordRequest) error {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.OTP = strings.ReplaceAll(req.OTP, " ", "")
+
+	var user models.User
+	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		return errors.New("invalid or expired reset code")
+	}
+
+	if user.OTPCode == "" || user.OTPCode != req.OTP {
+		return errors.New("invalid or expired reset code")
+	}
+	if time.Now().After(user.OTPExpiresAt) {
+		return errors.New("reset code has expired, please request a new one")
+	}
+
+	hashedPassword, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	user.PasswordHash = hashedPassword
+	user.OTPCode = ""     // Clear OTP after use
+	user.IsVerified = true // Ensure verified if they weren't already
+	if err := db.DB.Save(&user).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *AuthService) VerifyOTP(req VerifyOTPRequest) (string, *MeResponse, error) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.OTP = strings.ReplaceAll(req.OTP, " ", "") // Remove all spaces from OTP input

@@ -102,6 +102,37 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	})
 }
 
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req auth.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.ForgotPassword(req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process request"})
+		return
+	}
+
+	// Always return success to prevent email enumeration
+	c.JSON(http.StatusOK, gin.H{"message": "If an account with that email exists, a reset code has been sent."})
+}
+
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req auth.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.ResetPassword(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully. You can now log in with your new password."})
+}
+
 func (h *AuthHandler) Me(c *gin.Context) {
 	userIDValue, exists := c.Get("userID")
 	if !exists {

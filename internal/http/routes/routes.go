@@ -125,6 +125,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			authGroup.POST("/login", authH.Login)
 			authGroup.POST("/admin-login", authH.AdminLogin)
 			authGroup.POST("/verify-otp", authH.VerifyOTP)
+			authGroup.POST("/forgot-password", authH.ForgotPassword)
+			authGroup.POST("/reset-password", authH.ResetPassword)
 		}
 
 		// Protected Routes
