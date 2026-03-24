@@ -2,9 +2,7 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
-	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -31,32 +29,6 @@ type Config struct {
 func LoadConfig() (*Config, error) {
 	// Load .env file if it exists
 	_ = godotenv.Load()
-
-	// DEBUG: List all environment keys to debug missing variables
-	log.Println("--- DEBUG: Environment Variables Present ---")
-	for _, e := range os.Environ() {
-		pair := strings.SplitN(e, "=", 2)
-		if len(pair) > 0 {
-			// Mask sensitive keys
-			key := pair[0]
-			if strings.Contains(strings.ToUpper(key), "SECRET") ||
-				strings.Contains(strings.ToUpper(key), "PASSWORD") ||
-				strings.Contains(strings.ToUpper(key), "KEY") {
-				log.Printf("%s=*****", key)
-			} else if key == "REDIS_URL" {
-				// Show start of Redis URL to verify it's not empty
-				val := pair[1]
-				if len(val) > 10 {
-					log.Printf("%s=%s...", key, val[:10])
-				} else {
-					log.Printf("%s=%s", key, val)
-				}
-			} else {
-				log.Printf("%s=...", key)
-			}
-		}
-	}
-	log.Println("--- DEBUG: End Environment Variables ---")
 
 	config := &Config{
 		AppEnv:         getEnv("APP_ENV", "development"),
