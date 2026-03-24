@@ -2,18 +2,21 @@ package admin
 
 import (
 	"gopickup/internal/services/admin"
+	"gopickup/internal/services/product"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AdminHandler struct {
-	service *admin.AdminService
+	adminService   *admin.AdminService
+	productService *product.ProductService
 }
 
-func NewAdminHandler(service *admin.AdminService) *AdminHandler {
+func NewAdminHandler(adminService *admin.AdminService, productService *product.ProductService) *AdminHandler {
 	return &AdminHandler{
-		service: service,
+		adminService:   adminService,
+		productService: productService,
 	}
 }
 
@@ -30,7 +33,7 @@ func NewAdminHandler(service *admin.AdminService) *AdminHandler {
 func (h *AdminHandler) GetUsers(c *gin.Context) {
 	role := c.Query("role")
 
-	users, err := h.service.GetUsers(role)
+	users, err := h.adminService.GetUsers(role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
@@ -49,7 +52,7 @@ func (h *AdminHandler) GetUsers(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /admin/stats [get]
 func (h *AdminHandler) GetStats(c *gin.Context) {
-	stats, err := h.service.GetStats()
+	stats, err := h.adminService.GetStats()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stats"})
 		return
@@ -68,11 +71,37 @@ func (h *AdminHandler) GetStats(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /admin/orders [get]
 func (h *AdminHandler) GetOrders(c *gin.Context) {
-	orders, err := h.service.GetOrders()
+	orders, err := h.adminService.GetOrders()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch orders"})
 		return
 	}
 
 	c.JSON(http.StatusOK, orders)
+}
+
+// CreateProduct godoc
+// @Summary Admin create product
+// @Description Create a product for a specific vendor as an admin
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param request body product.AdminCreateProductRequest true "Product Request"
+// @Success 201 {object} models.Product
+// @Failure 400 {object} map[string]string
+// @Router /admin/products [post]
+func (h *AdminHandler) CreateProduct(c *gin.Context) {
+	var req product.AdminCreateProductRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	prod, err := h.productService.CreateProduct(req.VendorID, req.CreateProductRequest)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, prod)
 }

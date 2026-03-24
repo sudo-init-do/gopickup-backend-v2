@@ -67,7 +67,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	chatH := chatHandler.NewHandler(chatService)
 	walletH := walletHandler.NewWalletHandler(walletService)
 	uploadH := uploadHandler.NewUploadHandler()
-	adminH := adminHandler.NewAdminHandler(adminService)
+	adminH := adminHandler.NewAdminHandler(adminService, productService)
 
 	if err := os.MkdirAll("uploads", os.ModePerm); err != nil {
 		log.Printf("Failed to create uploads directory: %v", err)
@@ -184,6 +184,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				adminGroup.GET("/users", adminH.GetUsers)
 				adminGroup.GET("/stats", adminH.GetStats)
 				adminGroup.GET("/orders", adminH.GetOrders)
+				adminGroup.POST("/products", adminH.CreateProduct)
 			}
 
 			// Notification Routes

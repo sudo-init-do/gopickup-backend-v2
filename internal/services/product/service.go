@@ -34,6 +34,11 @@ type CreateProductRequest struct {
 	ImageURL      string  `json:"image_url"`
 }
 
+type AdminCreateProductRequest struct {
+	VendorID uuid.UUID `json:"vendor_id" binding:"required"`
+	CreateProductRequest
+}
+
 type UpdateProductRequest struct {
 	Name          *string  `json:"name"`
 	Description   *string  `json:"description"`

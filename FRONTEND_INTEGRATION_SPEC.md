@@ -471,6 +471,9 @@ All admin APIs require a valid JWT belonging to a user with the `admin` role.
 - `GET /admin/stats`: Get global platform stats (counts of users, roles, active orders).
 - `GET /admin/orders`: List all orders across the platform for monitoring.
 
+### 13.3 Product Management
+- `POST /admin/products`: Create a product for a specific vendor.
+
 ---
 
 ## 14. Feature Flags & Configuration
