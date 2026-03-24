@@ -24,9 +24,11 @@ import (
 	"gopickup/internal/services/order"
 	"gopickup/internal/services/product"
 	"gopickup/internal/services/profile"
+	"gopickup/internal/services/load"
 	"gopickup/internal/services/wallet"
 	"gopickup/internal/services/admin"
 
+	loadHandler "gopickup/internal/http/handlers/load"
 	adminHandler "gopickup/internal/http/handlers/admin"
 
 	"github.com/gin-gonic/gin"
@@ -52,6 +54,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	productService := product.NewProductService(auditService, db.GetRedis())
 	orderService := order.NewOrderService(auditService)
 	driverService := driver.NewDriverService(auditService)
+	loadService := load.NewLoadService(auditService)
 	notifService := notification.NewNotificationService(db.GetDB())
 	chatService := chat.NewChatService(db.GetDB(), notifService, auditService)
 	walletService := wallet.NewWalletService(db.GetDB())
@@ -66,6 +69,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	wsH := wsHandler.NewHandler(notifService, orderService, driverService, db.GetDB(), cfg)
 	chatH := chatHandler.NewHandler(chatService)
 	walletH := walletHandler.NewWalletHandler(walletService)
+	loadH := loadHandler.NewLoadHandler(loadService)
 	uploadH := uploadHandler.NewUploadHandler()
 	adminH := adminHandler.NewAdminHandler(adminService, productService)
 
@@ -161,6 +165,17 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			// Global Protected Upload Route
 			protected.POST("/upload", uploadH.UploadFile)
 
+			// Client Load Routes
+			clientLoadGroup := protected.Group("/loads")
+			clientLoadGroup.Use(middleware.RoleMiddleware(string(models.RoleClient)))
+			{
+				clientLoadGroup.POST("", loadH.CreateLoad)
+				clientLoadGroup.GET("/my", loadH.ListMyLoads)
+				clientLoadGroup.GET("/:id", loadH.GetLoad)
+				clientLoadGroup.POST("/:id/bids/:bid_id/accept", loadH.AcceptLoadBid)
+				clientLoadGroup.PATCH("/:id/cancel", loadH.CancelLoad)
+			}
+
 			// Driver Routes
 			driverGroup := protected.Group("/driver")
 			driverGroup.Use(middleware.RoleMiddleware(string(models.RoleDriver)))
@@ -173,6 +188,15 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			{
 				jobsGroup.GET("/available", driverH.GetAvailableJobs)
 				jobsGroup.POST("/:order_id/bid", driverH.PlaceBid)
+			}
+
+			// Driver Load Routes
+			driverLoadGroup := protected.Group("/loads")
+			driverLoadGroup.Use(middleware.RoleMiddleware(string(models.RoleDriver)))
+			{
+				driverLoadGroup.GET("/available", loadH.ListAvailableLoads)
+				driverLoadGroup.POST("/:id/bid", loadH.PlaceLoadBid)
+				driverLoadGroup.PATCH("/:id/status", loadH.UpdateLoadStatus)
 			}
 
 			// Admin Routes

@@ -60,6 +60,8 @@ func main() {
 			&models.AuditLog{},
 			&models.Wallet{},
 			&models.Transaction{},
+			&models.Load{},
+			&models.LoadBid{},
 		); err != nil {
 			log.Fatalf("Migration failed: %v", err)
 		}
