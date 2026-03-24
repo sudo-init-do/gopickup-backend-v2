@@ -25,6 +25,9 @@ import (
 	"gopickup/internal/services/product"
 	"gopickup/internal/services/profile"
 	"gopickup/internal/services/wallet"
+	"gopickup/internal/services/admin"
+
+	adminHandler "gopickup/internal/http/handlers/admin"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
@@ -52,6 +55,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	notifService := notification.NewNotificationService(db.GetDB())
 	chatService := chat.NewChatService(db.GetDB(), notifService, auditService)
 	walletService := wallet.NewWalletService(db.GetDB())
+	adminService := admin.NewAdminService(db.GetDB())
 
 	// Handlers
 	authH := authHandler.NewAuthHandler(authService)
@@ -63,6 +67,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	chatH := chatHandler.NewHandler(chatService)
 	walletH := walletHandler.NewWalletHandler(walletService)
 	uploadH := uploadHandler.NewUploadHandler()
+	adminH := adminHandler.NewAdminHandler(adminService)
 
 	if err := os.MkdirAll("uploads", os.ModePerm); err != nil {
 		log.Printf("Failed to create uploads directory: %v", err)
@@ -114,6 +119,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		{
 			authGroup.POST("/register", authH.Register)
 			authGroup.POST("/login", authH.Login)
+			authGroup.POST("/admin-login", authH.AdminLogin)
 			authGroup.POST("/verify-otp", authH.VerifyOTP)
 		}
 
@@ -174,6 +180,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			adminGroup.Use(middleware.AdminMiddleware())
 			{
 				adminGroup.PATCH("/drivers/:user_id/approve", profileH.ApproveDriver)
+				adminGroup.PATCH("/vendors/:user_id/approve", profileH.ApproveVendor)
+				adminGroup.GET("/users", adminH.GetUsers)
+				adminGroup.GET("/stats", adminH.GetStats)
+				adminGroup.GET("/orders", adminH.GetOrders)
 			}
 
 			// Notification Routes

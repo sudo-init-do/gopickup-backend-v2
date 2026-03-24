@@ -369,6 +369,40 @@ func (s *AuthService) Login(req LoginRequest) (string, *MeResponse, error) {
 	return token, me, nil
 }
 
+func (s *AuthService) AdminLogin(req LoginRequest) (string, *MeResponse, error) {
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	var user models.User
+	if err := db.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Printf("Admin Login failed: User not found for email: %s", req.Email)
+			return "", nil, errors.New("invalid credentials")
+		}
+		return "", nil, err
+	}
+
+	if user.Role != models.RoleAdmin {
+		log.Printf("Admin Login failed: User %s is not an admin", req.Email)
+		return "", nil, errors.New("unauthorized: admin privileges required")
+	}
+
+	if !utils.CheckPasswordHash(req.Password, user.PasswordHash) {
+		log.Printf("Admin Login failed: Password mismatch for user: %s", req.Email)
+		return "", nil, errors.New("invalid credentials")
+	}
+
+	token, err := utils.GenerateJWT(user.ID, string(user.Role), s.config.JWTSecret)
+	if err != nil {
+		return "", nil, err
+	}
+
+	me, err := s.Me(user.ID)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return token, me, nil
+}
+
 func (s *AuthService) VerifyOTP(req VerifyOTPRequest) (string, *MeResponse, error) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.OTP = strings.ReplaceAll(req.OTP, " ", "") // Remove all spaces from OTP input

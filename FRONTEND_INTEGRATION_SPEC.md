@@ -173,7 +173,12 @@ All timestamps are returned in **ISO 8601** format (e.g., `2023-10-27T10:00:00Z`
 ```
 **Response**: `{ "token": "jwt...", "user": { ... } }`
 
-### 4.3 Get Current User
+### 4.3 Admin Login
+`POST /auth/admin-login`
+**Request**: Same as Login.
+**Response**: Note that login will fail unless the user has the `admin` role. `{ "token": "jwt...", "user": { ... } }`
+
+### 4.4 Get Current User
 `GET /auth/me`
 **Response**: User object with profile data.
 
@@ -453,16 +458,31 @@ Listen for these JSON messages from the server.
 
 ---
 
-## 13. Feature Flags & Configuration
+## 13. Admin APIs
+
+All admin APIs require a valid JWT belonging to a user with the `admin` role.
+
+### 13.1 User Management
+- `GET /admin/users`: List all users. Supports `role` query param (e.g., `?role=driver`).
+- `PATCH /admin/drivers/:user_id/approve`: Approve a driver application.
+- `PATCH /admin/vendors/:user_id/approve`: Approve a vendor application.
+
+### 13.2 Platform Overview
+- `GET /admin/stats`: Get global platform stats (counts of users, roles, active orders).
+- `GET /admin/orders`: List all orders across the platform for monitoring.
+
+---
+
+## 14. Feature Flags & Configuration
 - **Max Image Size**: 10MB
 - **Rate Limits**:
   - Auth: 5 requests / 10s
   - Driver Location: 1 update / 5s
   - Chat: 1 message / 1s
 
-## 14. Frontend Flows
+## 15. Frontend Flows
 
-### 14.1 Order Lifecycle (Client View)
+### 15.1 Order Lifecycle (Client View)
 1.  **Browse**: `GET /products`
 2.  **Checkout**: `POST /orders/checkout` -> Order `pending`
 3.  **Wait for Vendor**: Listen for `order_status_updated` (`processing` -> `searching_driver`)
@@ -471,7 +491,7 @@ Listen for these JSON messages from the server.
 6.  **Track Driver**: Listen for `driver_moved`.
 7.  **Completion**: Listen for `order_status_updated` (`delivered`).
 
-### 13.2 Driver Job Flow
+### 15.2 Driver Job Flow
 1.  **Find Jobs**: `GET /jobs/available`
 2.  **Bid**: `POST /jobs/:order_id/bid`
 3.  **Wait**: Listen for `bid_accepted`.
@@ -479,9 +499,14 @@ Listen for these JSON messages from the server.
     -   Update location periodically via WS `driver_location_update`.
     -   (Backend handles status updates based on location/actions, or Admin/Vendor triggers for now).
 
+### 15.3 Admin Flow
+1.  **Login**: `POST /auth/admin-login`
+2.  **Dashboard**: `GET /admin/stats`
+3.  **Approve Users**: `PATCH /admin/drivers/:user_id/approve` or `PATCH /admin/vendors/:user_id/approve`
+
 ---
 
-## 15. QA Smoke Test Checklist
+## 16. QA Smoke Test Checklist
 - [ ] Register new Client account
 - [ ] Register new Driver account & approve via Admin API
 - [ ] Register new Vendor account & create 1 product

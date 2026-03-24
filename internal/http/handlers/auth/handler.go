@@ -62,6 +62,26 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
+// AdminLogin handles strict login for admin users only
+func (h *AuthHandler) AdminLogin(c *gin.Context) {
+	var req auth.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	token, user, err := h.service.AdminLogin(req)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"user":  user,
+	})
+}
+
 func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	var req auth.VerifyOTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
