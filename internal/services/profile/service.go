@@ -85,10 +85,10 @@ func (s *ProfileService) CreateClientProfile(userID uuid.UUID, req CreateClientP
 	}
 
 	// 1. Check if the phone number is already taken by ANOTHER user
-	var otherProfile models.ClientProfile
-	if err := db.DB.Where("phone_number = ? AND user_id != ?", req.PhoneNumber, userID).First(&otherProfile).Error; err == nil {
-		return errors.New("this phone number is already registered with another account")
-	}
+	// var otherProfile models.ClientProfile
+	// if err := db.DB.Where("phone_number = ? AND user_id != ?", req.PhoneNumber, userID).First(&otherProfile).Error; err == nil {
+	// 	return errors.New("this phone number is already registered with another account")
+	// }
 
 	// 2. Upsert logic: Update if exists, create if not
 	var profile models.ClientProfile
@@ -135,10 +135,10 @@ func (s *ProfileService) CreateDriverProfile(userID uuid.UUID, req CreateDriverP
 	}
 
 	// 1. Check if the phone number is already taken by ANOTHER user
-	var otherProfile models.DriverProfile
-	if err := db.DB.Where("phone_number = ? AND user_id != ?", req.PhoneNumber, userID).First(&otherProfile).Error; err == nil {
-		return errors.New("this phone number is already registered with another account")
-	}
+	// var otherProfile models.DriverProfile
+	// if err := db.DB.Where("phone_number = ? AND user_id != ?", req.PhoneNumber, userID).First(&otherProfile).Error; err == nil {
+	// 	return errors.New("this phone number is already registered with another account")
+	// }
 
 	// 2. Upsert logic
 	var profile models.DriverProfile
@@ -197,10 +197,10 @@ func (s *ProfileService) CreateVendorProfile(userID uuid.UUID, req CreateVendorP
 	}
 
 	// 1. Check if the phone number is already taken by ANOTHER user
-	var otherProfile models.VendorProfile
-	if err := db.DB.Where("phone_number = ? AND user_id != ?", req.PhoneNumber, userID).First(&otherProfile).Error; err == nil {
-		return errors.New("this phone number is already registered with another account")
-	}
+	// var otherProfile models.VendorProfile
+	// if err := db.DB.Where("phone_number = ? AND user_id != ?", req.PhoneNumber, userID).First(&otherProfile).Error; err == nil {
+	// 	return errors.New("this phone number is already registered with another account")
+	// }
 
 	// 2. Upsert logic
 	var profile models.VendorProfile
