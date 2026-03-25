@@ -224,12 +224,16 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			vendorGroup.Use(middleware.RoleMiddleware(string(models.RoleVendor)))
 			{
 				vendorGroup.POST("/products", productH.CreateProduct)
+				vendorGroup.GET("/products", productH.GetMyProducts)
 				vendorGroup.PUT("/products/:id", productH.UpdateProduct)
 				vendorGroup.DELETE("/products/:id", productH.DeleteProduct)
 				vendorGroup.GET("/dashboard", productH.GetVendorDashboard)
 				vendorGroup.PATCH("/orders/:id/status", orderH.VendorUpdateStatus)
 				vendorGroup.PATCH("/orders/:id/ready", orderH.VendorMarkReady)
 			}
+
+			// Alias for frontend expectation
+			protected.GET("/products/vendor/me", productH.GetMyProducts)
 
 			// Wallet Routes
 			walletGroup := protected.Group("/wallet")

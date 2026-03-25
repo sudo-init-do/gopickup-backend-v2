@@ -111,6 +111,32 @@ func (h *ProductHandler) GetVendorDashboard(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
+func (h *ProductHandler) GetMyProducts(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+
+	vendorID := userID.(uuid.UUID)
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	filter := product.ProductFilter{
+		VendorID: &vendorID,
+		Page:     page,
+		Limit:    limit,
+	}
+
+	resp, err := h.service.ListProducts(filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
 // Public Endpoints
 
 func (h *ProductHandler) ListProducts(c *gin.Context) {
