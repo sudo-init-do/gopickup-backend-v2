@@ -68,6 +68,9 @@ func main() {
 
 		// Run custom database optimizations (e.g. indexes)
 		db.RunCustomMigrations(db.GetDB())
+
+		// Ensure developer accounts exist
+		db.SeedDeveloperAccounts(db.GetDB())
 	}
 
 	// Setup Router
