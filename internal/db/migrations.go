@@ -16,6 +16,22 @@ func RunCustomMigrations(db *gorm.DB) {
 		fixOrderSchema(db)
 		fixMessageSchema(db)
 		createProductSearchIndex(db)
+		dropUniquePhoneConstraints(db)
+	}
+}
+
+func dropUniquePhoneConstraints(db *gorm.DB) {
+	log.Println("Dropping unique constraints on phone numbers to allow easier testing...")
+	
+	// If the indices exist from a previous auto-migrate, drop them
+	if db.Migrator().HasIndex(&models.VendorProfile{}, "uni_vendor_profiles_phone_number") {
+		db.Migrator().DropIndex(&models.VendorProfile{}, "uni_vendor_profiles_phone_number")
+	}
+	if db.Migrator().HasIndex(&models.DriverProfile{}, "uni_driver_profiles_phone_number") {
+		db.Migrator().DropIndex(&models.DriverProfile{}, "uni_driver_profiles_phone_number")
+	}
+	if db.Migrator().HasIndex(&models.ClientProfile{}, "uni_client_profiles_phone_number") {
+		db.Migrator().DropIndex(&models.ClientProfile{}, "uni_client_profiles_phone_number")
 	}
 }
 

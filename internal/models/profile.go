@@ -21,7 +21,7 @@ const (
 type ClientProfile struct {
 	UserID            uuid.UUID `gorm:"type:uuid;primaryKey" json:"user_id"`
 	FullName          string    `gorm:"not null" json:"full_name"`
-	PhoneNumber       string    `gorm:"unique;not null" json:"phone_number"`
+	PhoneNumber       string    `gorm:"not null" json:"phone_number"`
 	Address           string    `gorm:"not null" json:"address"`
 	ProfilePictureURL *string   `json:"profile_picture_url,omitempty"`
 
@@ -32,7 +32,7 @@ type ClientProfile struct {
 type DriverProfile struct {
 	UserID             uuid.UUID   `gorm:"type:uuid;primaryKey" json:"user_id"`
 	FullName           string      `gorm:"not null" json:"full_name"`
-	PhoneNumber        string      `gorm:"unique;not null" json:"phone_number"`
+	PhoneNumber        string      `gorm:"not null" json:"phone_number"`
 	LicenseNumber      string      `gorm:"unique;not null" json:"license_number"`
 	VehicleType        VehicleType `gorm:"type:varchar(50);not null" json:"vehicle_type"`
 	PlateNumber        string      `gorm:"unique;not null" json:"plate_number"`
@@ -53,7 +53,7 @@ type DriverProfile struct {
 type VendorProfile struct {
 	UserID         uuid.UUID `gorm:"type:uuid;primaryKey" json:"user_id"`
 	StoreName      string    `gorm:"not null" json:"store_name"`
-	PhoneNumber    string    `gorm:"unique;not null" json:"phone_number"`
+	PhoneNumber    string    `gorm:"not null" json:"phone_number"`
 	BusinessType   string    `gorm:"not null" json:"business_type"`
 	Address        string    `gorm:"not null" json:"address"`
 	StoreBannerURL *string   `json:"store_banner_url,omitempty"`
