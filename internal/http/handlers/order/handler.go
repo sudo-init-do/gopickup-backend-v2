@@ -91,10 +91,15 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, o)
 }
 
-func (h *OrderHandler) GetBids(c *gin.Context) {
+func (h *OrderHandler) DriverAcceptLoad(c *gin.Context) {
 	userIDInf, ok := c.Get("userID")
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	roleInf, _ := c.Get("role")
+	if roleInf == nil || roleInf.(string) != string(models.RoleDriver) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only drivers can accept loads"})
 		return
 	}
 	orderID, err := uuid.Parse(c.Param("id"))
@@ -102,32 +107,8 @@ func (h *OrderHandler) GetBids(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
 		return
 	}
-	bids, err := h.service.GetBids(userIDInf.(uuid.UUID), orderID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, bids)
-}
 
-func (h *OrderHandler) AcceptBid(c *gin.Context) {
-	userIDInf, ok := c.Get("userID")
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	orderID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
-		return
-	}
-	bidID, err := uuid.Parse(c.Param("bid_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid bid id"})
-		return
-	}
-
-	order, err := h.service.AcceptBid(userIDInf.(uuid.UUID), orderID, bidID)
+	order, err := h.service.DriverAcceptLoad(userIDInf.(uuid.UUID), orderID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -185,6 +166,26 @@ func (h *OrderHandler) VendorMarkReady(c *gin.Context) {
 		return
 	}
 	o, err := h.service.VendorMarkReady(userIDInf.(uuid.UUID), orderID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, o)
+}
+
+func (h *OrderHandler) ClientCancelOrder(c *gin.Context) {
+	userIDInf, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	idStr := c.Param("id")
+	orderID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	o, err := h.service.ClientCancelOrder(userIDInf.(uuid.UUID), orderID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

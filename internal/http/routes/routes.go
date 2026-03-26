@@ -160,8 +160,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			clientGroup.Use(middleware.RoleMiddleware(string(models.RoleClient)))
 			{
 				clientGroup.POST("/checkout", orderH.Checkout)
-				clientGroup.GET("/:id/bids", orderH.GetBids)
-				clientGroup.POST("/:id/bids/:bid_id/accept", orderH.AcceptBid)
+				clientGroup.PATCH("/:id/cancel", orderH.ClientCancelOrder)
 			}
 
 			// Global Protected Upload Route
@@ -188,8 +187,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			jobsGroup := protected.Group("/jobs")
 			jobsGroup.Use(middleware.RoleMiddleware(string(models.RoleDriver)))
 			{
-				jobsGroup.GET("/available", driverH.GetAvailableJobs)
-				jobsGroup.POST("/:order_id/bid", driverH.PlaceBid)
+				jobsGroup.GET("/assigned", driverH.GetAvailableJobs) // Renamed for clarity in this flow
+				jobsGroup.POST("/:id/accept", orderH.DriverAcceptLoad)
 			}
 
 			// Driver Load Routes
@@ -211,6 +210,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				adminGroup.GET("/stats", adminH.GetStats)
 				adminGroup.GET("/orders", adminH.GetOrders)
 				adminGroup.POST("/products", adminH.CreateProduct)
+				adminGroup.POST("/orders/assign-driver", adminH.AssignDriver)
+				adminGroup.PATCH("/orders/status", adminH.UpdateOrderStatus)
 			}
 
 			// Notification Routes

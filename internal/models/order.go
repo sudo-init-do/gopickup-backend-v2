@@ -12,9 +12,10 @@ type OrderStatus string
 const (
 	OrderPending         OrderStatus = "pending"
 	OrderProcessing      OrderStatus = "processing"
-	OrderSearchingDriver OrderStatus = "searching_driver"
-	OrderAssigned        OrderStatus = "assigned"
+	OrderAssigned        OrderStatus = "assigned"    // Admin assigned driver, waiting for driver acceptance
+	OrderInProgress      OrderStatus = "in_progress" // Driver accepted
 	OrderPickedUp        OrderStatus = "picked_up"
+	OrderOnTheWay        OrderStatus = "on_the_way"
 	OrderDelivered       OrderStatus = "delivered"
 	OrderCancelled       OrderStatus = "cancelled"
 )
@@ -58,12 +59,14 @@ type Order struct {
 	VendorID           uuid.UUID     `gorm:"type:uuid;not null;index" json:"vendor_id"`
 	DriverID           *uuid.UUID    `gorm:"type:uuid;index" json:"driver_id,omitempty"`
 	TotalProductAmount float64       `gorm:"type:decimal(10,2);not null" json:"total_product_amount"`
+	AgreedPrice        *float64      `gorm:"type:decimal(10,2)" json:"agreed_price,omitempty"`     // Total after negotiation
+	AgreedDeliveryFee  *float64      `gorm:"type:decimal(10,2)" json:"agreed_delivery_fee,omitempty"`
 	PaymentMethod      PaymentMethod `gorm:"type:varchar(30);not null" json:"payment_method"`
 	PickupAddress      string        `gorm:"not null" json:"pickup_address"`
 	DeliveryAddress    string        `gorm:"not null" json:"delivery_address"`
 	DeliveryLat        *float64      `json:"delivery_lat"`
 	DeliveryLng        *float64      `json:"delivery_lng"`
-	Status             OrderStatus   `gorm:"type:varchar(30);not null;index" json:"status"`
+	Status             OrderStatus   `gorm:"type:varchar(30);not null;default:'pending';index" json:"status"`
 
 	Items []OrderItem `gorm:"foreignKey:OrderID" json:"items,omitempty"`
 	Bids  []Bid       `gorm:"foreignKey:OrderID" json:"bids,omitempty"`

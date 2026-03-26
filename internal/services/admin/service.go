@@ -1,8 +1,10 @@
 package admin
 
 import (
+	"errors"
 	"gopickup/internal/models"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -53,9 +55,10 @@ func (s *AdminService) GetStats() (*PlatformStats, error) {
 	s.db.Model(&models.Order{}).Where("status = ?", models.OrderPending).Count(&stats.PendingOrders)
 	s.db.Model(&models.Order{}).Where("status IN (?)", []models.OrderStatus{
 		models.OrderProcessing,
-		models.OrderSearchingDriver,
 		models.OrderAssigned,
+		models.OrderInProgress,
 		models.OrderPickedUp,
+		models.OrderOnTheWay,
 	}).Count(&stats.ActiveOrders)
 
 	s.db.Model(&models.Product{}).Count(&stats.TotalProducts)
@@ -65,8 +68,26 @@ func (s *AdminService) GetStats() (*PlatformStats, error) {
 
 func (s *AdminService) GetOrders() ([]models.Order, error) {
 	var orders []models.Order
-	if err := s.db.Preload("Client").Preload("Driver").Preload("OrderItems").Order("created_at desc").Find(&orders).Error; err != nil {
+	if err := s.db.Order("created_at desc").Find(&orders).Error; err != nil {
 		return nil, err
 	}
 	return orders, nil
+}
+
+func (s *AdminService) AssignDriver(orderID uuid.UUID, driverID uuid.UUID, agreedPrice float64, deliveryFee float64) error {
+	var driver models.User
+	if err := s.db.Where("id = ? AND role = ?", driverID, models.RoleDriver).First(&driver).Error; err != nil {
+		return errors.New("driver not found")
+	}
+
+	return s.db.Model(&models.Order{}).Where("id = ?", orderID).Updates(map[string]interface{}{
+		"driver_id":           driverID,
+		"status":              models.OrderAssigned,
+		"agreed_price":        agreedPrice,
+		"agreed_delivery_fee": deliveryFee,
+	}).Error
+}
+
+func (s *AdminService) UpdateOrderStatus(orderID uuid.UUID, status models.OrderStatus) error {
+	return s.db.Model(&models.Order{}).Where("id = ?", orderID).Update("status", status).Error
 }

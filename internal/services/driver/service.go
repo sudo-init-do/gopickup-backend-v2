@@ -5,8 +5,6 @@ import (
 	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"gopickup/internal/services/audit"
-	"gopickup/internal/services/notification"
-
 	"github.com/google/uuid"
 )
 
@@ -44,54 +42,11 @@ func (s *DriverService) GetAvailableJobs(driverID uuid.UUID) ([]models.Order, er
 	}
 
 	var orders []models.Order
-	// Return orders waiting for driver
-	err := db.GetDB().Where("status = ?", models.OrderSearchingDriver).Find(&orders).Error
+	// Return orders assigned to THIS specific driver waiting for acceptance
+	err := db.GetDB().Where("driver_id = ? AND status = ?", driverID, models.OrderAssigned).Find(&orders).Error
 	return orders, err
 }
 
 func (s *DriverService) PlaceBid(driverID uuid.UUID, orderID uuid.UUID, amount float64) (*models.Bid, error) {
-	var profile models.DriverProfile
-	if err := db.GetDB().First(&profile, "user_id = ?", driverID).Error; err != nil {
-		return nil, errors.New("driver profile not found")
-	}
-	if !profile.IsApproved {
-		return nil, errors.New("driver not approved")
-	}
-
-	var order models.Order
-	if err := db.GetDB().First(&order, "id = ?", orderID).Error; err != nil {
-		return nil, errors.New("order not found")
-	}
-	if order.Status != models.OrderSearchingDriver {
-		return nil, errors.New("order not available for bidding")
-	}
-
-	// Check if bid exists
-	var existingBid models.Bid
-	err := db.GetDB().Where("order_id = ? AND driver_id = ?", orderID, driverID).First(&existingBid).Error
-	if err == nil {
-		// Update existing bid
-		existingBid.Amount = amount
-		if err := db.GetDB().Save(&existingBid).Error; err != nil {
-			return nil, err
-		}
-		s.audit.Log(driverID, "BID_UPDATED", "bid", existingBid.ID, map[string]interface{}{"amount": amount})
-		// Notify client about updated bid
-		notification.GetService().NotifyNewBid(order.ClientID, order.ID, existingBid.Amount)
-		return &existingBid, nil
-	}
-
-	bid := &models.Bid{
-		OrderID:  orderID,
-		DriverID: driverID,
-		Amount:   amount,
-		Status:   models.BidPending,
-	}
-	if err := db.GetDB().Create(bid).Error; err != nil {
-		return nil, err
-	}
-	s.audit.Log(driverID, "BID_CREATED", "bid", bid.ID, map[string]interface{}{"amount": amount})
-	// Notify client about new bid
-	notification.GetService().NotifyNewBid(order.ClientID, order.ID, bid.Amount)
-	return bid, nil
+	return nil, errors.New("bidding is disabled. loads are now assigned directly by admin")
 }

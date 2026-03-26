@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"github.com/google/uuid"
+	"gopickup/internal/models"
 	"gopickup/internal/services/admin"
 	"gopickup/internal/services/product"
 	"net/http"
@@ -104,4 +106,42 @@ func (h *AdminHandler) CreateProduct(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, prod)
+}
+
+func (h *AdminHandler) AssignDriver(c *gin.Context) {
+	var body struct {
+		OrderID     uuid.UUID `json:"order_id" binding:"required"`
+		DriverID    uuid.UUID `json:"driver_id" binding:"required"`
+		AgreedPrice float64   `json:"agreed_price" binding:"required"`
+		DeliveryFee float64   `json:"delivery_fee" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.adminService.AssignDriver(body.OrderID, body.DriverID, body.AgreedPrice, body.DeliveryFee); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Driver assigned and status updated to assigned"})
+}
+
+func (h *AdminHandler) UpdateOrderStatus(c *gin.Context) {
+	var body struct {
+		OrderID uuid.UUID          `json:"order_id" binding:"required"`
+		Status  models.OrderStatus `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.adminService.UpdateOrderStatus(body.OrderID, body.Status); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Order status updated by admin"})
 }
