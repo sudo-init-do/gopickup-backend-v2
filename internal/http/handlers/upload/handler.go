@@ -2,6 +2,7 @@ package upload
 
 import (
 	"fmt"
+	"gopickup/internal/config"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -10,10 +11,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type UploadHandler struct{}
+type UploadHandler struct {
+	cfg *config.Config
+}
 
-func NewUploadHandler() *UploadHandler {
-	return &UploadHandler{}
+func NewUploadHandler(cfg *config.Config) *UploadHandler {
+	return &UploadHandler{cfg: cfg}
 }
 
 func (h *UploadHandler) UploadFile(c *gin.Context) {
@@ -44,13 +47,15 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 
 	// Save file locally
 	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + err.Error()})
 		return
 	}
 
-	// Construct file URL
-	// Returns a relative path so the frontend can append the base URL
-	fileURL := fmt.Sprintf("/uploads/%s", fileName)
+	// Construct full file URL
+	// If AppURL is "https://api.example.com", fileURL becomes "https://api.example.com/uploads/uuid.png"
+	baseURL := strings.TrimSuffix(h.cfg.AppURL, "/")
+	// Since static route is r.Static("/uploads", ...), the path is /uploads/...
+	fileURL := fmt.Sprintf("%s/uploads/%s", baseURL, fileName)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "File uploaded successfully",

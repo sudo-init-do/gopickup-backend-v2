@@ -36,6 +36,9 @@ COPY --from=builder /app/migrate .
 COPY scripts/entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
+# Create uploads directory and ensure it is owned by the app user
+RUN mkdir -p /app/uploads && chown -R appuser:appuser /app/uploads
+
 # Use the non-root user
 USER appuser
 

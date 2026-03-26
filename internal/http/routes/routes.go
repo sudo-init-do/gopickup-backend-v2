@@ -34,6 +34,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 	"os"
+	"path/filepath"
 	"log"
 )
 
@@ -70,13 +71,27 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	chatH := chatHandler.NewHandler(chatService)
 	walletH := walletHandler.NewWalletHandler(walletService)
 	loadH := loadHandler.NewLoadHandler(loadService)
-	uploadH := uploadHandler.NewUploadHandler()
+	uploadH := uploadHandler.NewUploadHandler(cfg)
 	adminH := adminHandler.NewAdminHandler(adminService, productService)
 
-	if err := os.MkdirAll("uploads", os.ModePerm); err != nil {
-		log.Printf("Failed to create uploads directory: %v", err)
+	uploadDir := "./uploads"
+	// Ensure absolute path for logging clarity
+	absPath, _ := filepath.Abs(uploadDir)
+	log.Printf("Initializing uploads directory at: %s", absPath)
+
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		log.Printf("CRITICAL: Failed to create uploads directory: %v", err)
+	} else {
+		// Verify writability
+		testFile := filepath.Join(uploadDir, ".write_test")
+		if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+			log.Printf("CRITICAL: Uploads directory is NOT writable: %v", err)
+		} else {
+			os.Remove(testFile)
+			log.Printf("Uploads directory is ready and writable.")
+		}
 	}
-	r.Static("/uploads", "./uploads")
+	r.Static("/uploads", uploadDir)
 
 	// Public Routes
 	r.GET("/", handlers.HealthCheck)
