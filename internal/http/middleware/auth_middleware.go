@@ -3,6 +3,7 @@ package middleware
 import (
 	"gopickup/internal/config"
 	"gopickup/internal/utils"
+	"log"
 	"net/http"
 	"strings"
 
@@ -13,12 +14,14 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := ""
 
-		// 1. Try Authorization Header
+		// 1. Try Authorization Header (Most common)
 		authHeader := c.GetHeader("Authorization")
 		if authHeader != "" {
-			parts := strings.Split(authHeader, " ")
-			if len(parts) == 2 && parts[0] == "Bearer" {
-				tokenString = parts[1]
+			// Handle "Bearer <token>" or just "<token>"
+			if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+				tokenString = strings.TrimSpace(authHeader[7:])
+			} else {
+				tokenString = strings.TrimSpace(authHeader)
 			}
 		}
 
@@ -28,6 +31,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		}
 
 		if tokenString == "" {
+			log.Printf("AUTH_DEBUG: No token found in Authorization header or query param. Header: '%s'", authHeader)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required (missing token)"})
 			c.Abort()
 			return
@@ -35,6 +39,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		claims, err := utils.ValidateJWT(tokenString, cfg.JWTSecret)
 		if err != nil {
+			log.Printf("AUTH_DEBUG: JWT Validation Failed. Error: %v | Token Length: %d", err, len(tokenString))
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error":   "Invalid or expired token",
 				"details": err.Error(),
