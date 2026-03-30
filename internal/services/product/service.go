@@ -30,8 +30,9 @@ type CreateProductRequest struct {
 	Description   string  `json:"description"`
 	Price         float64 `json:"price" binding:"required,min=0"`
 	Category      string  `json:"category" binding:"required"`
-	StockQuantity int     `json:"stock_quantity" binding:"required,min=0"`
-	ImageURL      string  `json:"image_url"`
+	StockQuantity        int     `json:"stock_quantity" binding:"required,min=0"`
+	MinimumOrderQuantity int     `json:"minimum_order_quantity" binding:"required,min=1"`
+	ImageURL             string  `json:"image_url"`
 }
 
 type AdminCreateProductRequest struct {
@@ -44,8 +45,9 @@ type UpdateProductRequest struct {
 	Description   *string  `json:"description"`
 	Price         *float64 `json:"price" binding:"omitempty,min=0"`
 	Category      *string  `json:"category"`
-	StockQuantity *int     `json:"stock_quantity" binding:"omitempty,min=0"`
-	ImageURL      *string  `json:"image_url"`
+	StockQuantity        *int     `json:"stock_quantity" binding:"omitempty,min=0"`
+	MinimumOrderQuantity *int     `json:"minimum_order_quantity" binding:"omitempty,min=1"`
+	ImageURL             *string  `json:"image_url"`
 	IsActive      *bool    `json:"is_active"`
 }
 
@@ -97,9 +99,10 @@ func (s *ProductService) CreateProduct(vendorID uuid.UUID, req CreateProductRequ
 		Description:   req.Description,
 		Price:         req.Price,
 		Category:      req.Category,
-		StockQuantity: req.StockQuantity,
-		ImageURL:      req.ImageURL,
-		IsActive:      true,
+		StockQuantity:        req.StockQuantity,
+		MinimumOrderQuantity: req.MinimumOrderQuantity,
+		ImageURL:             req.ImageURL,
+		IsActive:             true,
 	}
 
 	if err := db.DB.Create(&product).Error; err != nil {
@@ -149,6 +152,9 @@ func (s *ProductService) UpdateProduct(vendorID uuid.UUID, productID uuid.UUID, 
 	}
 	if req.ImageURL != nil {
 		product.ImageURL = *req.ImageURL
+	}
+	if req.MinimumOrderQuantity != nil {
+		product.MinimumOrderQuantity = *req.MinimumOrderQuantity
 	}
 	if req.IsActive != nil {
 		product.IsActive = *req.IsActive

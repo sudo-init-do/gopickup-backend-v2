@@ -52,9 +52,19 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 	}
 
 	// Construct full file URL
-	// If AppURL is "https://api.example.com", fileURL becomes "https://api.example.com/uploads/uuid.png"
-	baseURL := strings.TrimSuffix(h.cfg.AppURL, "/")
 	// Since static route is r.Static("/uploads", ...), the path is /uploads/...
+	baseURL := strings.TrimSuffix(h.cfg.AppURL, "/")
+	
+	// If AppURL is still pointing to localhost but we are on a production domain, 
+	// use the request's host to construct a valid URL.
+	if strings.Contains(baseURL, "localhost") && !strings.Contains(c.Request.Host, "localhost") {
+		scheme := "http"
+		if c.Request.Header.Get("X-Forwarded-Proto") == "https" || c.Request.TLS != nil {
+			scheme = "https"
+		}
+		baseURL = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	}
+
 	fileURL := fmt.Sprintf("%s/uploads/%s", baseURL, fileName)
 
 	c.JSON(http.StatusOK, gin.H{
