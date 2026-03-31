@@ -28,6 +28,17 @@ func SeedDeveloperAccounts(db *gorm.DB) {
 		db.FirstOrCreate(&profile, models.VendorProfile{UserID: userID})
 	}
 	createDevAccount(db, "vendor.dev@gopickup.com.ng", "DevSecure123!", models.RoleVendor, vendorProfile)
+	// 3. Create a Developer Client Account
+	clientProfile := func(userID uuid.UUID) {
+		profile := models.ClientProfile{
+			UserID:      userID,
+			FullName:    "Developer Test Client",
+			PhoneNumber: "08000000002",
+			Address:     "123 client Lane, Lagos",
+		}
+		db.FirstOrCreate(&profile, models.ClientProfile{UserID: userID})
+	}
+	createDevAccount(db, "client.dev@gopickup.com.ng", "DevSecure123!", models.RoleClient, clientProfile)
 }
 
 func createDevAccount(db *gorm.DB, email, password string, role models.UserRole, profileSetup func(uuid.UUID)) {
