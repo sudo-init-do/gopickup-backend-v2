@@ -30,8 +30,8 @@ type CreateProductRequest struct {
 	Description   string  `json:"description"`
 	Price         float64 `json:"price" binding:"required,min=0"`
 	Category      string  `json:"category" binding:"required"`
-	StockQuantity        int     `json:"stock_quantity" binding:"required,min=0"`
-	MinimumOrderQuantity int     `json:"minimum_order_quantity" binding:"required,min=1"`
+	StockQuantity        int     `json:"stock_quantity" json:"stock"`
+	MinimumOrderQuantity int     `json:"minimum_order_quantity" json:"moq"`
 	ImageURL             string  `json:"image_url"`
 }
 
@@ -45,8 +45,8 @@ type UpdateProductRequest struct {
 	Description   *string  `json:"description"`
 	Price         *float64 `json:"price" binding:"omitempty,min=0"`
 	Category      *string  `json:"category"`
-	StockQuantity        *int     `json:"stock_quantity" binding:"omitempty,min=0"`
-	MinimumOrderQuantity *int     `json:"minimum_order_quantity" binding:"omitempty,min=1"`
+	StockQuantity        *int     `json:"stock_quantity" json:"stock" binding:"omitempty,min=0"`
+	MinimumOrderQuantity *int     `json:"minimum_order_quantity" json:"moq" binding:"omitempty,min=1"`
 	ImageURL             *string  `json:"image_url"`
 	IsActive      *bool    `json:"is_active"`
 }
