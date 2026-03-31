@@ -12,33 +12,7 @@ import (
 
 // SeedDeveloperAccounts runs automatically on startup to ensure a dev/admin account exists.
 func SeedDeveloperAccounts(db *gorm.DB) {
-	// 1. Create a Developer Admin Account
-	createDevAccount(db, "developer@gopickup.com.ng", "DevSecure123!", models.RoleAdmin, nil)
-
-	// 2. Create a Developer Vendor Account (so they don't have to fight frontend profile creation)
-	vendorProfile := func(userID uuid.UUID) {
-		profile := models.VendorProfile{
-			UserID:         userID,
-			StoreName:      "Developer Test Store",
-			PhoneNumber:    "08000000001",
-			BusinessType:   "Software & Testing",
-			Address:        "123 Dev Lane, Lagos",
-			IsApproved:     true,
-		}
-		db.FirstOrCreate(&profile, models.VendorProfile{UserID: userID})
-	}
-	createDevAccount(db, "vendor.dev@gopickup.com.ng", "DevSecure123!", models.RoleVendor, vendorProfile)
-	// 3. Create a Developer Client Account
-	clientProfile := func(userID uuid.UUID) {
-		profile := models.ClientProfile{
-			UserID:      userID,
-			FullName:    "Developer Test Client",
-			PhoneNumber: "08000000002",
-			Address:     "123 client Lane, Lagos",
-		}
-		db.FirstOrCreate(&profile, models.ClientProfile{UserID: userID})
-	}
-	createDevAccount(db, "client.dev@gopickup.com.ng", "DevSecure123!", models.RoleClient, clientProfile)
+	// Seeding disabled for production/real data mode
 }
 
 func createDevAccount(db *gorm.DB, email, password string, role models.UserRole, profileSetup func(uuid.UUID)) {
