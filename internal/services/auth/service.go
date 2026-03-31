@@ -27,11 +27,10 @@ func NewAuthService(emailService email.EmailService, cfg *config.Config) *AuthSe
 		config:       cfg,
 	}
 }
-
 type RegisterRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
-	Role     string `json:"role" binding:"required,oneof=client driver vendor"`
+	Role     string `json:"role"`
 }
 
 type LoginRequest struct {
@@ -84,11 +83,16 @@ func (s *AuthService) Register(req RegisterRequest) (string, *MeResponse, error)
 	otp := utils.GenerateOTP()
 
 	if isNewUser {
+		role := models.RoleClient
+		if req.Role != "" {
+			role = models.UserRole(req.Role)
+		}
+
 		user = models.User{
 			ID:           uuid.New(), // Explicitly set ID
 			Email:        req.Email,
 			PasswordHash: hashedPassword,
-			Role:         models.UserRole(req.Role),
+			Role:         role,
 			OTPCode:      otp,
 			OTPExpiresAt: time.Now().Add(10 * time.Minute),
 			CreatedAt:    time.Now(), // Explicitly set timestamps
@@ -98,7 +102,7 @@ func (s *AuthService) Register(req RegisterRequest) (string, *MeResponse, error)
 		log.Printf("Attempting to create user: ID=%s Email=%s Role=%s", user.ID, user.Email, user.Role)
 
 		if err := db.DB.Create(&user).Error; err != nil {
-			log.Printf("DB Create Error: %v", err)
+			log.Printf("Register failed: Database error: %v", err)
 			return "", nil, err
 		}
 	} else {
