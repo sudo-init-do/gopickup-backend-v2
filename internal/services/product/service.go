@@ -7,6 +7,7 @@ import (
 	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"gopickup/internal/services/audit"
+	"log"
 	"math"
 	"time"
 
@@ -30,8 +31,10 @@ type CreateProductRequest struct {
 	Description   string  `json:"description"`
 	Price         float64 `json:"price" binding:"required,min=0"`
 	Category      string  `json:"category" binding:"required"`
-	StockQuantity        int     `json:"stock_quantity" json:"stock"`
-	MinimumOrderQuantity int     `json:"minimum_order_quantity" json:"moq"`
+	StockQuantity        int     `json:"stock_quantity"`
+	Stock                int     `json:"stock"`                 // Alias for stock_quantity
+	MinimumOrderQuantity int     `json:"minimum_order_quantity"`
+	MOQ                  int     `json:"moq"`                   // Alias for minimum_order_quantity
 	ImageURL             string  `json:"image_url"`
 }
 
@@ -45,8 +48,10 @@ type UpdateProductRequest struct {
 	Description   *string  `json:"description"`
 	Price         *float64 `json:"price" binding:"omitempty,min=0"`
 	Category      *string  `json:"category"`
-	StockQuantity        *int     `json:"stock_quantity" json:"stock" binding:"omitempty,min=0"`
-	MinimumOrderQuantity *int     `json:"minimum_order_quantity" json:"moq" binding:"omitempty,min=1"`
+	StockQuantity        *int     `json:"stock_quantity" binding:"omitempty,min=0"`
+	Stock                *int     `json:"stock" binding:"omitempty,min=0"`
+	MinimumOrderQuantity *int     `json:"minimum_order_quantity" binding:"omitempty,min=1"`
+	MOQ                  *int     `json:"moq" binding:"omitempty,min=1"`
 	ImageURL             *string  `json:"image_url"`
 	IsActive      *bool    `json:"is_active"`
 }
@@ -83,6 +88,14 @@ type PaginatedResponse struct {
 // Vendor Methods
 
 func (s *ProductService) CreateProduct(vendorID uuid.UUID, req CreateProductRequest) (*models.Product, error) {
+	// Handle Aliases
+	if req.StockQuantity == 0 && req.Stock > 0 {
+		req.StockQuantity = req.Stock
+	}
+	if req.MinimumOrderQuantity == 0 && req.MOQ > 0 {
+		req.MinimumOrderQuantity = req.MOQ
+	}
+	
 	// 1. Check if vendor is approved
 	var vendor models.VendorProfile
 	if err := db.DB.First(&vendor, vendorID).Error; err != nil {
@@ -230,6 +243,10 @@ func (s *ProductService) GetVendorDashboard(vendorID uuid.UUID) (*VendorDashboar
 // Public Methods
 
 func (s *ProductService) ListProducts(filter ProductFilter) (*PaginatedResponse, error) {
+	if filter.VendorID != nil {
+		log.Printf("DEBUG: Listing products for Vendor: %s", filter.VendorID.String())
+	}
+
 	var products []models.Product
 	var totalItems int64
 
