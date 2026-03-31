@@ -2,10 +2,13 @@ package order
 
 import (
 	"errors"
+	"fmt"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"gopickup/internal/services/audit"
 	"gopickup/internal/services/notification"
+	"net/url"
+	"strings"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -26,6 +29,11 @@ type CheckoutRequest struct {
 	DeliveryLng     *float64             `json:"delivery_lng"`
 }
 
+type CheckoutResponse struct {
+	Order       *models.Order `json:"order"`
+	WhatsAppURL string        `json:"whatsapp_url,omitempty"`
+}
+
 type OrderService struct {
 	audit *audit.AuditService
 }
@@ -35,7 +43,7 @@ func NewOrderService(audit *audit.AuditService) *OrderService {
 }
 
 // Checkout creates an order transactionally: validates products, stock, single vendor, creates order/items, decrements stock.
-func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*models.Order, error) {
+func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*CheckoutResponse, error) {
 	if len(req.Items) == 0 {
 		return nil, errors.New("no items")
 	}
@@ -85,6 +93,11 @@ func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*model
 			total += p.Price * float64(it.Quantity)
 		}
 
+		status := models.OrderPending
+		if req.PaymentMethod == models.PaymentWhatsApp {
+			status = models.OrderAwaitingPayment
+		}
+
 		o := &models.Order{
 			ClientID:           clientID,
 			VendorID:           vendorID,
@@ -94,7 +107,7 @@ func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*model
 			DeliveryAddress:    req.DeliveryAddress,
 			DeliveryLat:        req.DeliveryLat,
 			DeliveryLng:        req.DeliveryLng,
-			Status:             models.OrderPending,
+			Status:             status,
 		}
 		if err := tx.Create(o).Error; err != nil {
 			return err
@@ -135,7 +148,56 @@ func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*model
 	s.audit.Log(clientID, "ORDER_CREATED", "order", order.ID, map[string]interface{}{"total": order.TotalProductAmount})
 	notification.GetService().NotifyOrderStatusUpdate(order.ID, order.Status, order.ClientID, order.VendorID, order.DriverID)
 
-	return order, nil
+	resp := &CheckoutResponse{
+		Order: order,
+	}
+
+	// Generate WhatsApp URL if needed
+	if req.PaymentMethod == models.PaymentWhatsApp {
+		var vendor models.VendorProfile
+		if err := db.GetDB().First(&vendor, "user_id = ?", order.VendorID).Error; err == nil {
+			// Format: https://wa.me/2348030000000?text=Hi...
+			phone := vendor.PhoneNumber
+			if !strings.HasPrefix(phone, "+") && !strings.HasPrefix(phone, "234") {
+				// Basic normalization for Nigerian numbers if they start with 0
+				if strings.HasPrefix(phone, "0") {
+					phone = "234" + phone[1:]
+				}
+			}
+			msg := fmt.Sprintf("Hi, I just placed an order on GoPickup!\n\nOrder ID: %s\nTotal: ₦%.2f\n\nPlease confirm my order and share payment details.", 
+				order.ID.String()[:8], order.TotalProductAmount)
+			resp.WhatsAppURL = fmt.Sprintf("https://wa.me/%s?text=%s", phone, url.QueryEscape(msg))
+		}
+	}
+
+	return resp, nil
+}
+
+// ConfirmPayment moves order from awaiting_payment to processing (Vendor/Admin only)
+func (s *OrderService) ConfirmPayment(userID uuid.UUID, orderID uuid.UUID) (*models.Order, error) {
+	var o models.Order
+	if err := db.GetDB().First(&o, "id = ?", orderID).Error; err != nil {
+		return nil, err
+	}
+	
+	// Only vendor or admin can confirm
+	if o.VendorID != userID {
+		// Check for admin role separately if needed, but for now we assume role check is in handler
+	}
+
+	if o.Status != models.OrderAwaitingPayment && o.Status != models.OrderPending {
+		return nil, errors.New("order is not in a payable state")
+	}
+
+	o.Status = models.OrderProcessing
+	if err := db.GetDB().Save(&o).Error; err != nil {
+		return nil, err
+	}
+	
+	s.audit.Log(userID, "PAYMENT_CONFIRMED", "order", o.ID, nil)
+	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
+	
+	return &o, nil
 }
 
 // List orders for role

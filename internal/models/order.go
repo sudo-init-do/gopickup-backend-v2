@@ -11,6 +11,7 @@ type OrderStatus string
 
 const (
 	OrderPending         OrderStatus = "pending"
+	OrderAwaitingPayment OrderStatus = "awaiting_payment" // Specifically for WhatsApp/Manual payment
 	OrderProcessing      OrderStatus = "processing"
 	OrderAssigned        OrderStatus = "assigned"    // Admin assigned driver, waiting for driver acceptance
 	OrderInProgress      OrderStatus = "in_progress" // Driver accepted
@@ -51,6 +52,7 @@ const (
 	PaymentWallet         PaymentMethod = "wallet"
 	PaymentCard           PaymentMethod = "card"
 	PaymentCashOnDelivery PaymentMethod = "cash_on_delivery"
+	PaymentWhatsApp       PaymentMethod = "whatsapp"
 )
 
 type Order struct {

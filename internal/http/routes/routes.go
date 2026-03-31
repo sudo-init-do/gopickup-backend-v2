@@ -245,7 +245,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				vendorGroup.DELETE("/products/:id", productH.DeleteProduct)
 				vendorGroup.GET("/dashboard", productH.GetVendorDashboard)
 				vendorGroup.PATCH("/orders/:id/status", orderH.VendorUpdateStatus)
-				vendorGroup.PATCH("/orders/:id/ready", orderH.VendorMarkReady)
+				vendorGroup.POST("/:id/ready", orderH.VendorMarkReady)
+				vendorGroup.POST("/:id/confirm-payment", orderH.ConfirmPayment)
 			}
 
 			// Alias for frontend expectation

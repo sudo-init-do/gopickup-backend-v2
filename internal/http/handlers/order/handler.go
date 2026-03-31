@@ -192,3 +192,27 @@ func (h *OrderHandler) ClientCancelOrder(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, o)
 }
+func (h *OrderHandler) ConfirmPayment(c *gin.Context) {
+	userIDInf, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	roleInf, _ := c.Get("role")
+	if roleInf == nil || (roleInf.(string) != string(models.RoleVendor) && roleInf.(string) != string(models.RoleAdmin)) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only vendor or admin can confirm payment"})
+		return
+	}
+	idStr := c.Param("id")
+	orderID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	o, err := h.service.ConfirmPayment(userIDInf.(uuid.UUID), orderID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, o)
+}
