@@ -57,3 +57,16 @@ func createDevAccount(db *gorm.DB, email, password string, role models.UserRole,
 		profileSetup(userID)
 	}
 }
+
+func WipeMarketplaceData(db *gorm.DB) {
+	log.Println("🚨 WIPE_MARKETPLACE=true detected! Erasing all Marketplace Data (Products, Orders, OrderItems)...")
+
+	// Hard delete (truncate equivalent)
+	db.Unscoped().Where("1=1").Delete(&models.OrderItem{})
+	db.Unscoped().Where("1=1").Delete(&models.Order{})
+	db.Unscoped().Where("1=1").Delete(&models.Product{})
+	
+	// Optionally clear carts from redis by grabbing all keys if needed, but not strictly required.
+	
+	log.Println("✅ Marketplace Data completely wiped.")
+}

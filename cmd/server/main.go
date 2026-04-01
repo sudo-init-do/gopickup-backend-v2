@@ -71,6 +71,10 @@ func main() {
 
 		// Ensure developer accounts exist
 		db.SeedDeveloperAccounts(db.GetDB())
+
+		if os.Getenv("WIPE_MARKETPLACE") == "true" {
+			db.WipeMarketplaceData(db.GetDB())
+		}
 	}
 
 	// Setup Router
