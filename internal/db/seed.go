@@ -18,15 +18,22 @@ func SeedDeveloperAccounts(db *gorm.DB) {
 
 func createDevAccount(db *gorm.DB, email, password string, role models.UserRole, profileSetup func(uuid.UUID)) {
 	var user models.User
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+
 	if err := db.Where("email = ?", email).First(&user).Error; err == nil {
-		// Already exists, just ensure profile is setup if needed
+		// Account exists. Force upgrade role and reset password to ensure it works.
+		user.Role = role
+		user.PasswordHash = string(hashedPassword)
+		db.Save(&user)
+
+		log.Printf("Forced admin role and reset password for: %s", email)
+
 		if profileSetup != nil {
 			profileSetup(user.ID)
 		}
 		return
 	}
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	userID := uuid.New()
 	
 	user = models.User{
