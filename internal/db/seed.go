@@ -12,8 +12,9 @@ import (
 
 // SeedDeveloperAccounts runs automatically on startup to ensure a dev/admin account exists.
 func SeedDeveloperAccounts(db *gorm.DB) {
-	// Seeding disabled for production/real data mode
+	createDevAccount(db, "admin@gopickup.com.ng", "Admin@2026!", models.RoleAdmin, nil)
 }
+
 
 func createDevAccount(db *gorm.DB, email, password string, role models.UserRole, profileSetup func(uuid.UUID)) {
 	var user models.User
