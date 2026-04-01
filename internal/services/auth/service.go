@@ -57,6 +57,7 @@ type MeResponse struct {
 	ProfilePictureURL string          `json:"profile_picture_url"`
 	ProfilePicture    string          `json:"profile_picture"`
 	IsApproved        bool            `json:"is_approved"`
+	IsProfileComplete bool            `json:"is_profile_complete"`
 }
 
 func (s *AuthService) Register(req RegisterRequest) (string, *MeResponse, error) {
@@ -286,10 +287,12 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 	address := ""
 	profilePictureURL := ""
 	isApproved := false
+	isProfileComplete := false
 
 	switch user.Role {
 	case models.RoleClient:
 		if user.ClientProfile != nil {
+			isProfileComplete = true
 			fullName = user.ClientProfile.FullName
 			phoneNumber = user.ClientProfile.PhoneNumber
 			address = user.ClientProfile.Address
@@ -300,6 +303,7 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 		}
 	case models.RoleDriver:
 		if user.DriverProfile != nil {
+			isProfileComplete = true
 			fullName = user.DriverProfile.FullName
 			phoneNumber = user.DriverProfile.PhoneNumber
 			if user.DriverProfile.ProfilePictureURL != nil {
@@ -309,6 +313,7 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 		}
 	case models.RoleVendor:
 		if user.VendorProfile != nil {
+			isProfileComplete = true
 			fullName = user.VendorProfile.StoreName
 			phoneNumber = user.VendorProfile.PhoneNumber
 			address = user.VendorProfile.Address
@@ -320,6 +325,7 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 	case models.RoleAdmin:
 		fullName = "Admin"
 		isApproved = true
+		isProfileComplete = true
 	}
 
 	return &MeResponse{
@@ -336,6 +342,7 @@ func (s *AuthService) Me(userID uuid.UUID) (*MeResponse, error) {
 		ProfilePictureURL: profilePictureURL,
 		ProfilePicture:    profilePictureURL,
 		IsApproved:        isApproved,
+		IsProfileComplete: isProfileComplete,
 	}, nil
 }
 
