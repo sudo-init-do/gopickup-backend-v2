@@ -219,6 +219,29 @@ func (s *ProductService) DeleteProduct(vendorID uuid.UUID, productID uuid.UUID) 
 	return err
 }
 
+func (s *ProductService) AdminDeleteProduct(productID uuid.UUID) error {
+	var product models.Product
+	if err := db.DB.First(&product, productID).Error; err != nil {
+		return errors.New("product not found")
+	}
+
+	product.IsActive = false
+	if err := db.DB.Save(&product).Error; err != nil {
+		return err
+	}
+
+	err := db.DB.Delete(&product).Error
+	if err == nil {
+		// Log system delete
+		s.audit.Log(uuid.Nil, "PRODUCT_DELETED_BY_ADMIN", "product", product.ID, nil)
+		if s.redis != nil {
+			s.redis.Del(context.Background(), "product:"+product.ID.String())
+		}
+	}
+	return err
+}
+
+
 type VendorDashboardStats struct {
 	TotalProducts  int64 `json:"total_products"`
 	ActiveProducts int64 `json:"active_products"`

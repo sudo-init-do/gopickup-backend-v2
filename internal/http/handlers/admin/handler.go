@@ -145,3 +145,20 @@ func (h *AdminHandler) UpdateOrderStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Order status updated by admin"})
 }
+
+func (h *AdminHandler) DeleteProduct(c *gin.Context) {
+	idStr := c.Param("id")
+	productID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
+		return
+	}
+
+	if err := h.productService.AdminDeleteProduct(productID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Product deleted by admin successfully"})
+}
+
