@@ -33,6 +33,7 @@ import (
 func main() {
 	cwd, _ := os.Getwd()
 	log.Printf("Starting application... CWD: %s", cwd)
+	log.Println("✨ APP VERSION: HARDCORE-WIPE-V1")
 
 	// Load Config
 	cfg, err := config.LoadConfig()
