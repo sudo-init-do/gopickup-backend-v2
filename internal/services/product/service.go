@@ -227,15 +227,10 @@ func (s *ProductService) AdminDeleteProduct(productID uuid.UUID) error {
 		return errors.New("product not found")
 	}
 
-	product.IsActive = false
-	if err := db.DB.Save(&product).Error; err != nil {
-		return err
-	}
-
-	err := db.DB.Delete(&product).Error
+	err := db.DB.Unscoped().Delete(&product).Error
 	if err == nil {
 		// Log system delete
-		s.audit.Log(uuid.Nil, "PRODUCT_DELETED_BY_ADMIN", "product", product.ID, nil)
+		s.audit.Log(uuid.Nil, "PRODUCT_HARD_DELETED_BY_ADMIN", "product", product.ID, nil)
 		if s.redis != nil {
 			s.redis.Del(context.Background(), "product:"+product.ID.String())
 		}

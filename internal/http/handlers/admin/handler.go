@@ -162,3 +162,19 @@ func (h *AdminHandler) DeleteProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Product deleted by admin successfully"})
 }
 
+func (h *AdminHandler) DeleteUser(c *gin.Context) {
+	idStr := c.Param("id")
+	userID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	if err := h.adminService.DeleteUser(userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User and related data strictly deleted successfully"})
+}
+

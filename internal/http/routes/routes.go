@@ -226,6 +226,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				adminGroup.GET("/orders", adminH.GetOrders)
 				adminGroup.POST("/products", adminH.CreateProduct)
 				adminGroup.DELETE("/products/:id", adminH.DeleteProduct)
+				adminGroup.DELETE("/users/:id", adminH.DeleteUser)
 				adminGroup.POST("/orders/assign-driver", adminH.AssignDriver)
 				adminGroup.PATCH("/orders/status", adminH.UpdateOrderStatus)
 			}

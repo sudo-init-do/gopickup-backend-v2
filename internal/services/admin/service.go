@@ -91,3 +91,23 @@ func (s *AdminService) AssignDriver(orderID uuid.UUID, driverID uuid.UUID, agree
 func (s *AdminService) UpdateOrderStatus(orderID uuid.UUID, status models.OrderStatus) error {
 	return s.db.Model(&models.Order{}).Where("id = ?", orderID).Update("status", status).Error
 }
+
+func (s *AdminService) DeleteUser(userID uuid.UUID) error {
+	var user models.User
+	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
+		return errors.New("user not found")
+	}
+
+	// Hard delete related data manually to ensure complete cleanup
+	s.db.Unscoped().Where("user_id = ?", userID).Delete(&models.ClientProfile{})
+	s.db.Unscoped().Where("user_id = ?", userID).Delete(&models.DriverProfile{})
+	s.db.Unscoped().Where("user_id = ?", userID).Delete(&models.VendorProfile{})
+	s.db.Unscoped().Where("vendor_id = ?", userID).Delete(&models.Product{})
+
+	// Hard delete the user
+	if err := s.db.Unscoped().Where("id = ?", userID).Delete(&models.User{}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
