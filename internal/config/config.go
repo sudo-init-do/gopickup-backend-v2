@@ -25,10 +25,12 @@ type Config struct {
 	CorsOrigins    string
 	MetricsEnabled bool
 	RedisURL       string
+	DefaultProductImage string
 }
 
 func LoadConfig() (*Config, error) {
-	// Load .env file if it exists
+	//
+	//  Load .env file if it exists
 	_ = godotenv.Load()
 
 	config := &Config{
@@ -49,6 +51,7 @@ func LoadConfig() (*Config, error) {
 		CorsOrigins:    getEnv("CORS_ALLOW_ORIGINS", "*"),
 		MetricsEnabled: getEnv("ENABLE_METRICS", "false") == "true",
 		RedisURL:       getEnv("REDIS_URL", "redis://localhost:6379/0"),
+		DefaultProductImage: getEnv("DEFAULT_PRODUCT_IMAGE", "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&q=80"), // Logistics-themed placeholder
 	}
 
 	// Validate required variables

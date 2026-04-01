@@ -52,7 +52,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	emailService := email.NewPlunkService(cfg)
 	authService := auth.NewAuthService(emailService, cfg)
 	profileService := profile.NewProfileService(emailService, db.GetRedis())
-	productService := product.NewProductService(auditService, db.GetRedis())
+	productService := product.NewProductService(auditService, db.GetRedis(), cfg)
 	orderService := order.NewOrderService(auditService)
 	driverService := driver.NewDriverService(auditService)
 	loadService := load.NewLoadService(auditService)

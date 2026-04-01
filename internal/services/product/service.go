@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"gopickup/internal/config"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"gopickup/internal/services/audit"
@@ -16,12 +17,13 @@ import (
 )
 
 type ProductService struct {
-	audit *audit.AuditService
-	redis *redis.Client
+	audit  *audit.AuditService
+	redis  *redis.Client
+	config *config.Config
 }
 
-func NewProductService(audit *audit.AuditService, redis *redis.Client) *ProductService {
-	return &ProductService{audit: audit, redis: redis}
+func NewProductService(audit *audit.AuditService, redis *redis.Client, cfg *config.Config) *ProductService {
+	return &ProductService{audit: audit, redis: redis, config: cfg}
 }
 
 // DTOs
@@ -325,6 +327,13 @@ func (s *ProductService) ListProducts(filter ProductFilter) (*PaginatedResponse,
 	// Execute
 	if err := query.Order("created_at desc").Limit(limit).Offset(offset).Preload("Vendor").Find(&products).Error; err != nil {
 		return nil, err
+	}
+
+	// Image fallback
+	for i := range products {
+		if products[i].ImageURL == "" {
+			products[i].ImageURL = s.config.DefaultProductImage
+		}
 	}
 
 	return &PaginatedResponse{
