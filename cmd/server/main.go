@@ -42,6 +42,9 @@ func main() {
 	// Connect to Database
 	db.Connect(cfg)
 	db.InitRedis(cfg)
+	if os.Getenv("WIPE_MARKETPLACE") == "true" {
+		db.WipeMarketplaceData(db.GetDB())
+	}
 
 	// Auto Migrate (Optional in prod, default true for dev convenience)
 	if os.Getenv("MIGRATE_ON_START") != "false" {
@@ -71,10 +74,6 @@ func main() {
 
 		// Ensure developer accounts exist
 		db.SeedDeveloperAccounts(db.GetDB())
-
-		if os.Getenv("WIPE_MARKETPLACE") == "true" {
-			db.WipeMarketplaceData(db.GetDB())
-		}
 	}
 
 	// Setup Router

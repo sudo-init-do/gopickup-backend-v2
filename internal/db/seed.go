@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"gopickup/internal/models"
 	"log"
 	"time"
@@ -58,13 +59,32 @@ func createDevAccount(db *gorm.DB, email, password string, role models.UserRole,
 }
 
 // oba look at this
+// WipeMarketplaceData erases all marketplace data (products, orders, items) and flushes the cache.
 func WipeMarketplaceData(db *gorm.DB) {
-	log.Println("🚨 WIPE_MARKETPLACE=true detected! Erasing all Marketplace Data (Products, Orders, OrderItems)...")
+	log.Println("🚨 WIPE_MARKETPLACE=true detected! Starting data erasure...")
 
-	// Hard delete (raw SQL to bypass Gorm's AllowGlobalUpdate protection)
-	db.Exec("DELETE FROM order_items")
-	db.Exec("DELETE FROM orders")
-	db.Exec("DELETE FROM products")
-	
-	log.Println("✅ Marketplace Data completely wiped.")
+	// 1. Flush Redis to clear cached product lists
+	if RedisClient != nil {
+		if err := RedisClient.FlushAll(context.Background()).Err(); err != nil {
+			log.Printf("⚠️  Failed to flush Redis: %v", err)
+		} else {
+			log.Println("🧹 Redis cache cleared.")
+		}
+	}
+
+	// 2. Hard delete records (raw SQL to bypass mass-deletion protection)
+	queries := []string{
+		"DELETE FROM order_items",
+		"DELETE FROM orders",
+		"DELETE FROM products",
+		"DELETE FROM bids",
+	}
+
+	for _, q := range queries {
+		if err := db.Exec(q).Error; err != nil {
+			log.Printf("❌ Failed to execute wipe query [%s]: %v", q, err)
+		}
+	}
+
+	log.Println("✅ Marketplace data and cache completely wiped.")
 }
