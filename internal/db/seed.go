@@ -15,7 +15,6 @@ func SeedDeveloperAccounts(db *gorm.DB) {
 	createDevAccount(db, "admin@gopickup.com.ng", "Admin@2026!", models.RoleAdmin, nil)
 }
 
-
 func createDevAccount(db *gorm.DB, email, password string, role models.UserRole, profileSetup func(uuid.UUID)) {
 	var user models.User
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -35,7 +34,7 @@ func createDevAccount(db *gorm.DB, email, password string, role models.UserRole,
 	}
 
 	userID := uuid.New()
-	
+
 	user = models.User{
 		ID:           userID,
 		Email:        email,
@@ -58,15 +57,14 @@ func createDevAccount(db *gorm.DB, email, password string, role models.UserRole,
 	}
 }
 
+// oba look at this
 func WipeMarketplaceData(db *gorm.DB) {
 	log.Println("🚨 WIPE_MARKETPLACE=true detected! Erasing all Marketplace Data (Products, Orders, OrderItems)...")
 
-	// Hard delete (truncate equivalent)
-	db.Unscoped().Where("1=1").Delete(&models.OrderItem{})
-	db.Unscoped().Where("1=1").Delete(&models.Order{})
-	db.Unscoped().Where("1=1").Delete(&models.Product{})
-	
-	// Optionally clear carts from redis by grabbing all keys if needed, but not strictly required.
+	// Hard delete (raw SQL to bypass Gorm's AllowGlobalUpdate protection)
+	db.Exec("DELETE FROM order_items")
+	db.Exec("DELETE FROM orders")
+	db.Exec("DELETE FROM products")
 	
 	log.Println("✅ Marketplace Data completely wiped.")
 }
