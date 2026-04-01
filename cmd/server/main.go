@@ -7,6 +7,7 @@ import (
 	"gopickup/internal/models"
 	"log"
 	"os"
+	"strings"
 )
 
 // @title GoPickup API
@@ -42,7 +43,10 @@ func main() {
 	// Connect to Database
 	db.Connect(cfg)
 	db.InitRedis(cfg)
-	if os.Getenv("WIPE_MARKETPLACE") == "true" {
+	
+	log.Println("🔍 Checking for WIPE_MARKETPLACE toggle...")
+	wipeEnv := strings.ToLower(strings.TrimSpace(os.Getenv("WIPE_MARKETPLACE")))
+	if wipeEnv == "true" {
 		db.WipeMarketplaceData(db.GetDB())
 	}
 
