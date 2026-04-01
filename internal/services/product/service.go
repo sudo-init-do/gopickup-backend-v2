@@ -227,7 +227,9 @@ func (s *ProductService) AdminDeleteProduct(productID uuid.UUID) error {
 		return errors.New("product not found")
 	}
 
-	err := db.DB.Unscoped().Delete(&product).Error
+	// Hard delete the product using an explicit WHERE clause 
+	// Gorm silently fails on Delete(&struct) sometimes with custom UUID types
+	err := db.DB.Unscoped().Where("id = ?", productID).Delete(&models.Product{}).Error
 	if err == nil {
 		// Log system delete
 		s.audit.Log(uuid.Nil, "PRODUCT_HARD_DELETED_BY_ADMIN", "product", product.ID, nil)
