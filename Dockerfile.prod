@@ -11,10 +11,12 @@ COPY go.mod go.sum ./
 
 # Download all dependencies
 RUN go mod download
-RUN go mod tidy
 
 # Copy the source code
 COPY . .
+
+# Auto-heal dependencies
+RUN go mod tidy
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server
