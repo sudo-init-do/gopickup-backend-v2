@@ -35,10 +35,11 @@ func (s *DriverService) UpdateLocation(driverID uuid.UUID, lat, lng float64) err
 func (s *DriverService) GetAvailableJobs(driverID uuid.UUID) ([]models.Order, error) {
 	var profile models.DriverProfile
 	if err := db.GetDB().First(&profile, "user_id = ?", driverID).Error; err != nil {
-		return nil, errors.New("driver profile not found")
+		// Return empty list instead of error to prevent frontend crash if profile missing
+		return []models.Order{}, nil
 	}
 	if !profile.IsApproved {
-		return nil, errors.New("driver not approved")
+		return []models.Order{}, nil
 	}
 
 	var orders []models.Order

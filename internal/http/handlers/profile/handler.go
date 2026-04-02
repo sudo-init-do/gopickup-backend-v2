@@ -168,7 +168,14 @@ func (h *ProfileHandler) GetProfile(c *gin.Context) {
 
 	profile, err := h.service.GetProfile(userID.(uuid.UUID), models.UserRole(role.(string)))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		// Instead of 404, return a 200 with a flag that profile is missing.
+		// This prevents frontend "404 Not Found" crashes.
+		c.JSON(http.StatusOK, gin.H{
+			"user_id":            userID,
+			"role":               role,
+			"is_profile_created": false,
+			"message":            "Profile data is currently empty. Please create your profile.",
+		})
 		return
 	}
 

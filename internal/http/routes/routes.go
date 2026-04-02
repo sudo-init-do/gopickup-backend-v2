@@ -112,7 +112,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			}
 			c.JSON(200, gin.H{
 				"status":  "up",
-				"version": "HARDCORE-FIX-BETA-1",
+				"version": "BETA-2-ROUTES-EXPANDED",
 			})
 		})
 		
@@ -168,6 +168,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			profileGroup := protected.Group("/profile")
 			{
 				profileGroup.GET("", profileH.GetProfile)
+				profileGroup.GET("/client", profileH.GetProfile)
+				profileGroup.GET("/driver", profileH.GetProfile)
+				profileGroup.GET("/vendor", profileH.GetProfile)
+				
 				profileGroup.POST("/client", middleware.RoleMiddleware(string(models.RoleClient)), profileH.CreateClient)
 				profileGroup.POST("/driver", middleware.RoleMiddleware(string(models.RoleDriver)), profileH.CreateDriver)
 				profileGroup.POST("/vendor", middleware.RoleMiddleware(string(models.RoleVendor)), profileH.CreateVendor)
