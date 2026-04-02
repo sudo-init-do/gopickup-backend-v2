@@ -164,6 +164,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			// Profile Routes
 			profileGroup := protected.Group("/profile")
 			{
+				profileGroup.GET("", profileH.GetProfile)
 				profileGroup.POST("/client", middleware.RoleMiddleware(string(models.RoleClient)), profileH.CreateClient)
 				profileGroup.POST("/driver", middleware.RoleMiddleware(string(models.RoleDriver)), profileH.CreateDriver)
 				profileGroup.POST("/vendor", middleware.RoleMiddleware(string(models.RoleVendor)), profileH.CreateVendor)

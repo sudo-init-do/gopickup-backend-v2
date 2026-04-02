@@ -145,6 +145,36 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Profile updated successfully"})
 }
 
+// GetProfile godoc
+// @Summary Get user profile
+// @Description Get the profile details of the authenticated user based on their role
+// @Tags profile
+// @Produce json
+// @Success 200 {object} interface{}
+// @Failure 404 {object} map[string]string
+// @Router /profile [get]
+func (h *ProfileHandler) GetProfile(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+
+	role, exists := c.Get("role")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Role not found in context"})
+		return
+	}
+
+	profile, err := h.service.GetProfile(userID.(uuid.UUID), models.UserRole(role.(string)))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, profile)
+}
+
 // ApproveDriver godoc
 // @Summary Approve driver
 // @Description Approve a driver account (Admin only)
