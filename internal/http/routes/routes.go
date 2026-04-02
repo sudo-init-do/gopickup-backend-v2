@@ -111,8 +111,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				return
 			}
 			c.JSON(200, gin.H{
-				"status":  "up",
-				"version": "BETA-3-READY-FOR-MANUAL-DEPLOY",
+				"status":  "ok",
+				"version": "BETA-4-DYNAMO-WIPE",
 			})
 		})
 		
