@@ -110,7 +110,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				c.JSON(503, gin.H{"status": "down", "error": "db_ping_failed"})
 				return
 			}
-			c.JSON(200, gin.H{"status": "up"})
+			c.JSON(200, gin.H{
+				"status":  "up",
+				"version": "HARDCORE-FIX-BETA-1",
+			})
 		})
 		
 		// Metrics Endpoint (Optional, guarded by env)
