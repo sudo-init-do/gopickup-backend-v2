@@ -112,7 +112,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			}
 			c.JSON(200, gin.H{
 				"status":  "up",
-				"version": "BETA-2-ROUTES-EXPANDED",
+				"version": "BETA-3-READY-FOR-MANUAL-DEPLOY",
 			})
 		})
 		
