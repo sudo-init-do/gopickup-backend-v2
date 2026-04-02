@@ -33,7 +33,6 @@ import (
 func main() {
 	cwd, _ := os.Getwd()
 	log.Printf("Starting application... CWD: %s", cwd)
-	log.Println("✨ APP VERSION: HARDCORE-WIPE-V1")
 
 	// Load Config
 	cfg, err := config.LoadConfig()
@@ -45,12 +44,6 @@ func main() {
 	db.Connect(cfg)
 	db.InitRedis(cfg)
 	
-	log.Println("🔍 Checking for WIPE_MARKETPLACE toggle...")
-	wipeEnv := strings.ToLower(strings.TrimSpace(os.Getenv("WIPE_MARKETPLACE")))
-	if wipeEnv == "true" {
-		db.WipeMarketplaceData(db.GetDB())
-	}
-
 	// Auto Migrate (Optional in prod, default true for dev convenience)
 	if os.Getenv("MIGRATE_ON_START") != "false" {
 		log.Println("Running migrations...")
