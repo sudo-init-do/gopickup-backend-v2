@@ -7,7 +7,6 @@ import (
 	"gopickup/internal/models"
 	"log"
 	"os"
-	"strings"
 )
 
 // @title GoPickup API
