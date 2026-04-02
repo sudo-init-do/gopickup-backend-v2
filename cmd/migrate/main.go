@@ -5,6 +5,7 @@ import (
 	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"log"
+	"os"
 )
 
 func main() {
@@ -18,6 +19,13 @@ func main() {
 
 	// Connect to Database
 	db.Connect(cfg)
+
+	// Optional Purge
+	if os.Getenv("PURGE_DATABASE") == "true" {
+		log.Println("PURGE_DATABASE=true detected! Wiping all data...")
+		db.GetDB().Exec("DROP TABLE IF EXISTS audit_logs, load_bids, loads, transactions, wallets, messages, chats, order_items, orders, products, vendor_profiles, driver_profiles, client_profiles, users CASCADE")
+		log.Println("Database wiped.")
+	}
 
 	// Run Migrations
 	log.Println("Running auto-migration...")
