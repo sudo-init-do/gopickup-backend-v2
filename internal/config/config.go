@@ -56,32 +56,32 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Validate required variables
-	if config.DatabaseURL == "" {
-		if config.DBDriver == "postgres" {
-			if config.DBHost == "" {
-				return nil, fmt.Errorf("DB_HOST is required")
-			}
-			if config.DBPort == "" {
-				return nil, fmt.Errorf("DB_PORT is required")
-			}
-			if config.DBUser == "" {
-				return nil, fmt.Errorf("DB_USER is required")
-			}
-			if config.DBPassword == "" {
-				return nil, fmt.Errorf("DB_PASSWORD is required")
-			}
-			if config.DBName == "" {
-				return nil, fmt.Errorf("DB_NAME is required")
-			}
-		} else if config.DBDriver == "sqlite" {
-			if config.DBName == "" {
-				return nil, fmt.Errorf("DB_NAME is required for sqlite")
-			}
+	if config.DatabaseURL != "" {
+		log.Printf("Config: DATABASE_URL is set. Skipping individual DB field checks.")
+	} else if config.DBDriver == "postgres" {
+		if config.DBHost == "" {
+			return nil, fmt.Errorf("DB_HOST is required")
+		}
+		if config.DBPort == "" {
+			return nil, fmt.Errorf("DB_PORT is required")
+		}
+		if config.DBUser == "" {
+			return nil, fmt.Errorf("DB_USER is required")
+		}
+		if config.DBPassword == "" {
+			return nil, fmt.Errorf("DB_PASSWORD is required")
+		}
+		if config.DBName == "" {
+			return nil, fmt.Errorf("DB_NAME is required")
+		}
+	} else if config.DBDriver == "sqlite" {
+		if config.DBName == "" {
+			return nil, fmt.Errorf("DB_NAME is required for sqlite")
 		}
 	}
 
 	if config.PlunkAPIKey == "" {
-		log.Printf("CRITICAL CONFIG ERROR: PLUNK_API_KEY is missing! Email features will not work.")
+		log.Printf("CRITICAL CONFIG WARNING: PLUNK_API_KEY is missing! Email features will not work.")
 	}
 	if config.JWTSecret == "" {
 		log.Printf("CRITICAL CONFIG ERROR: JWT_SECRET is missing! Authentication will fail.")
