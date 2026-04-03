@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"gopickup/internal/config"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
