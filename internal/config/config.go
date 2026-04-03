@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -54,26 +55,36 @@ func LoadConfig() (*Config, error) {
 		DefaultProductImage: getEnv("DEFAULT_PRODUCT_IMAGE", "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&q=80"), // Logistics-themed placeholder
 	}
 
-	// VERBOSE DIAGNOSTICS
-	log.Printf("[CONFIG_DEBUG] AppEnv: %s", config.AppEnv)
-	log.Printf("[CONFIG_DEBUG] DBDriver: %s", config.DBDriver)
-	log.Printf("[CONFIG_DEBUG] DBHost: %s", config.DBHost)
-	if config.DatabaseURL != "" {
-		log.Printf("[CONFIG_DEBUG] DATABASE_URL is DETECTED (length: %d)", len(config.DatabaseURL))
-	} else {
-		log.Printf("[CONFIG_DEBUG] DATABASE_URL is MISSING or EMPTY")
-	}
+	// VERBOSE DIAGNOSTICS (Production safe)
+	log.Printf("[CONFIG] Starting app in %s mode", config.AppEnv)
 
-	// Validate required variables (RELAXED - Warn only to allow startup)
-	if config.DatabaseURL == "" && config.DBDriver == "postgres" && config.DBHost == "" {
-		log.Printf("CRITICAL WARNING: No DatabaseURL or DB_HOST found. Connection will likely fail.")
+	// Validate required variables
+	if config.DatabaseURL != "" {
+		log.Printf("[CONFIG] Using DATABASE_URL connection mode")
+	} else if config.DBDriver == "postgres" {
+		log.Printf("[CONFIG] Using individual field connection mode (Host: %s)", config.DBHost)
+		if config.DBHost == "" {
+			return nil, fmt.Errorf("DB_HOST is required")
+		}
+		if config.DBPort == "" {
+			return nil, fmt.Errorf("DB_PORT is required")
+		}
+		if config.DBUser == "" {
+			return nil, fmt.Errorf("DB_USER is required")
+		}
+		if config.DBPassword == "" {
+			return nil, fmt.Errorf("DB_PASSWORD is required")
+		}
+		if config.DBName == "" {
+			return nil, fmt.Errorf("DB_NAME is required")
+		}
 	}
 
 	if config.PlunkAPIKey == "" {
-		log.Printf("CRITICAL CONFIG WARNING: PLUNK_API_KEY is missing! Email features will not work.")
+		log.Printf("Warning: PLUNK_API_KEY is missing. Email features disabled.")
 	}
 	if config.JWTSecret == "" {
-		log.Printf("CRITICAL CONFIG ERROR: JWT_SECRET is missing! Authentication will fail.")
+		log.Printf("Warning: JWT_SECRET is missing. Authentication will fail.")
 	}
 
 	return config, nil
