@@ -12,6 +12,8 @@ import (
 func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 	// Hardcoded trusted origins (Always allowed)
 	trustedOrigins := []string{
+		"https://app.gopickup.com.ng",
+		"https://www.app.gopickup.com.ng",
 		"https://main.gopickup.com.ng",
 		"https://www.main.gopickup.com.ng",
 		"https://gopickup.com.ng",
