@@ -138,6 +138,9 @@ func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*Check
 		if err := tx.Create(&items).Error; err != nil {
 			return err
 		}
+		if err := tx.Preload("Vendor").Preload("Items").First(o, "id = ?", o.ID).Error; err != nil {
+			return err
+		}
 		order = o
 		return nil
 	})
@@ -231,7 +234,7 @@ func (s *OrderService) ListOrders(userID uuid.UUID, role models.UserRole, page, 
 	if err := q.Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
-	if err := q.Offset(offset).Limit(limit).Find(&orders).Error; err != nil {
+	if err := q.Preload("Vendor").Preload("Items").Offset(offset).Limit(limit).Find(&orders).Error; err != nil {
 		return nil, 0, err
 	}
 	return orders, count, nil
@@ -240,7 +243,7 @@ func (s *OrderService) ListOrders(userID uuid.UUID, role models.UserRole, page, 
 // Get order detail if authorized. Includes items.
 func (s *OrderService) GetOrder(userID uuid.UUID, role models.UserRole, orderID uuid.UUID) (*models.Order, error) {
 	var o models.Order
-	if err := db.GetDB().Preload("Items").First(&o, "id = ?", orderID).Error; err != nil {
+	if err := db.GetDB().Preload("Items").Preload("Vendor").Preload("Bids").First(&o, "id = ?", orderID).Error; err != nil {
 		return nil, err
 	}
 	if role == models.RoleAdmin {

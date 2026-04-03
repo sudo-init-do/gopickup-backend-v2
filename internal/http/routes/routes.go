@@ -134,6 +134,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		api.GET("/products", productH.ListProducts)
 		api.GET("/products/:id", productH.GetProduct)
 		api.GET("/vendors", productH.ListVendors)
+		api.GET("/vendors/:id", productH.GetVendor)
 
 		authGroup := api.Group("/auth")
 		authGroup.Use(middleware.RateLimitMiddleware(rate.Limit(5), 10))

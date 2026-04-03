@@ -242,21 +242,45 @@ func (s *ProductService) AdminDeleteProduct(productID uuid.UUID) error {
 
 
 type VendorDashboardStats struct {
-	TotalProducts  int64 `json:"total_products"`
-	ActiveProducts int64 `json:"active_products"`
+	TotalProducts  int64   `json:"total_products"`
+	ActiveProducts int64   `json:"active_products"`
+	TotalOrders    int64   `json:"total_orders"`
+	PendingOrders  int64   `json:"pending_orders"`
+	TotalRevenue   float64 `json:"total_revenue"`
 }
 
 func (s *ProductService) GetVendorDashboard(vendorID uuid.UUID) (*VendorDashboardStats, error) {
 	var stats VendorDashboardStats
 
-	// Count total products (including inactive, but excluding deleted)
+	// 1. Product Stats
 	if err := db.DB.Model(&models.Product{}).Where("vendor_id = ?", vendorID).Count(&stats.TotalProducts).Error; err != nil {
 		return nil, err
 	}
-
-	// Count active products
 	if err := db.DB.Model(&models.Product{}).Where("vendor_id = ? AND is_active = ?", vendorID, true).Count(&stats.ActiveProducts).Error; err != nil {
 		return nil, err
+	}
+
+	// 2. Order Stats
+	if err := db.DB.Model(&models.Order{}).Where("vendor_id = ?", vendorID).Count(&stats.TotalOrders).Error; err != nil {
+		return nil, err
+	}
+	// Pending orders (Pending, Processing, Assigned, InProgress)
+	pendingStatuses := []models.OrderStatus{
+		models.OrderPending,
+		models.OrderProcessing,
+		models.OrderAssigned,
+		models.OrderInProgress,
+	}
+	if err := db.DB.Model(&models.Order{}).Where("vendor_id = ? AND status IN ?", vendorID, pendingStatuses).Count(&stats.PendingOrders).Error; err != nil {
+		return nil, err
+	}
+
+	// 3. Revenue Stats (Only from non-cancelled orders)
+	if err := db.DB.Model(&models.Order{}).
+		Where("vendor_id = ? AND status != ?", vendorID, models.OrderCancelled).
+		Select("COALESCE(SUM(total_product_amount), 0)").
+		Row().Scan(&stats.TotalRevenue); err != nil {
+		log.Printf("Error calculating revenue: %v", err)
 	}
 
 	return &stats, nil
@@ -424,4 +448,13 @@ func (s *ProductService) ListVendors(filter VendorFilter) (*PaginatedResponse, e
 			Limit:       limit,
 		},
 	}, nil
+}
+
+func (s *ProductService) GetVendor(id uuid.UUID) (*models.VendorProfile, error) {
+	var vendor models.VendorProfile
+	if err := db.DB.Preload("Products", "is_active = ?", true).First(&vendor, "user_id = ?", id).Error; err != nil {
+		return nil, errors.New("vendor not found")
+	}
+
+	return &vendor, nil
 }

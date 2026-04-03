@@ -69,7 +69,8 @@ type Order struct {
 	DeliveryLat        *float64      `json:"delivery_lat"`
 	DeliveryLng        *float64      `json:"delivery_lng"`
 	Status             OrderStatus   `gorm:"type:varchar(30);not null;default:'pending';index" json:"status"`
-
+	
+	Vendor             VendorProfile `gorm:"foreignKey:VendorID" json:"vendor,omitempty"`
 	Items []OrderItem `gorm:"foreignKey:OrderID" json:"items,omitempty"`
 	Bids  []Bid       `gorm:"foreignKey:OrderID" json:"bids,omitempty"`
 

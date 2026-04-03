@@ -229,3 +229,20 @@ func (h *ProductHandler) ListVendors(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
+
+func (h *ProductHandler) GetVendor(c *gin.Context) {
+	vendorIDStr := c.Param("id")
+	vendorID, err := uuid.Parse(vendorIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vendor ID"})
+		return
+	}
+
+	vendor, err := h.service.GetVendor(vendorID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, vendor)
+}
