@@ -55,12 +55,12 @@ func LoadConfig() (*Config, error) {
 		DefaultProductImage: getEnv("DEFAULT_PRODUCT_IMAGE", "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&q=80"), // Logistics-themed placeholder
 	}
 
-	// VERBOSE DIAGNOSTICS (Production safe)
+	// Production logging
 	log.Printf("[CONFIG] Starting app in %s mode", config.AppEnv)
 
 	// Validate required variables
 	if config.DatabaseURL != "" {
-		log.Printf("[CONFIG] Using DATABASE_URL connection mode")
+		log.Printf("[CONFIG] Database connection: DATABASE_URL detected")
 	} else if config.DBDriver == "postgres" {
 		log.Printf("[CONFIG] Using individual field connection mode (Host: %s)", config.DBHost)
 		if config.DBHost == "" {
