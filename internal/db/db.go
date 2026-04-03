@@ -20,13 +20,15 @@ func Connect(cfg *config.Config) {
 		dialector = sqlite.Open(cfg.DBName + "?_journal_mode=WAL")
 	} else {
 		var dsn string
-		if cfg.DatabaseURL != "" {
-			dsn = cfg.DatabaseURL
-		} else {
-			dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
-				cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort)
-		}
-		dialector = postgres.Open(dsn)
+	if cfg.DatabaseURL != "" {
+		log.Printf("Connecting to database using DATABASE_URL (masking secrets)...")
+		dsn = cfg.DatabaseURL
+	} else {
+		log.Printf("Connecting to database at %s:%s (user: %s, db: %s)", cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBName)
+		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
+			cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort)
+	}
+	dialector = postgres.Open(dsn)
 	}
 
 	var err error
