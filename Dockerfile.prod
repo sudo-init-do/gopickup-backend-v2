@@ -34,10 +34,10 @@ RUN apk add --no-cache ca-certificates tzdata
 RUN adduser -D -g '' appuser
 
 # Copy the binaries from the builder stage
-COPY --from=builder /app/server .
-COPY --from=builder /app/migrate .
-COPY scripts/entrypoint.sh .
-RUN chmod +x entrypoint.sh
+COPY --from=builder --chown=appuser:appuser /app/server /app/server
+COPY --from=builder --chown=appuser:appuser /app/migrate /app/migrate
+COPY --chown=appuser:appuser scripts/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Create uploads directory and ensure it is owned by the app user
 RUN mkdir -p /app/uploads && chown -R appuser:appuser /app/uploads

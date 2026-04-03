@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -80,10 +81,10 @@ func LoadConfig() (*Config, error) {
 	}
 
 	if config.PlunkAPIKey == "" {
-		return nil, fmt.Errorf("PLUNK_API_KEY is required")
+		log.Printf("CRITICAL CONFIG ERROR: PLUNK_API_KEY is missing! Email features will not work.")
 	}
 	if config.JWTSecret == "" {
-		return nil, fmt.Errorf("JWT_SECRET is required")
+		log.Printf("CRITICAL CONFIG ERROR: JWT_SECRET is missing! Authentication will fail.")
 	}
 
 	return config, nil
