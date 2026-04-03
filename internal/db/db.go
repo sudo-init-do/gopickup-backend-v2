@@ -5,7 +5,6 @@ import (
 	"gopickup/internal/config"
 	"log"
 
-	"time"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -30,17 +29,12 @@ func Connect(cfg *config.Config) {
 	}
 
 	var err error
-	for i := 0; i < 10; i++ {
-		DB, err = gorm.Open(dialector, &gorm.Config{})
-		if err == nil {
-			log.Println("Database connection established")
-			return
-		}
-		log.Printf("⚠️ Waiting for database... (attempt %d/10): %v", i+1, err)
-		time.Sleep(3 * time.Second)
+	DB, err = gorm.Open(dialector, &gorm.Config{})
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	log.Fatalf("❌ CRITICAL: Failed to connect to database after 10 attempts: %v", err)
+	log.Println("Database connection established")
 }
 
 func GetDB() *gorm.DB {

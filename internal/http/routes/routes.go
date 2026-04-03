@@ -111,8 +111,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				return
 			}
 			c.JSON(200, gin.H{
-				"status":  "ok",
-				"version": "BETA-5-SELF-HEALING",
+				"status": "ok",
 			})
 		})
 		
