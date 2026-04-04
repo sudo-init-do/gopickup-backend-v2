@@ -56,7 +56,7 @@ type VendorProfile struct {
 	PhoneNumber                string    `gorm:"not null" json:"phone_number"`
 	BusinessType               string    `gorm:"not null" json:"business_type"`
 	Address                    string    `gorm:"not null" json:"address"`
-	BusinessRegistrationNumber string    `gorm:"not null" json:"business_registration_number"`
+	BusinessRegistrationNumber string    `json:"business_registration_number"`
 	StoreBannerURL             *string   `json:"store_banner_url,omitempty"`
 	IsApproved     bool      `gorm:"default:false" json:"is_approved"`
 	Products       []Product `gorm:"foreignKey:VendorID" json:"products,omitempty"`
