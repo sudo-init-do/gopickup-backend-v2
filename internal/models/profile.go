@@ -9,6 +9,8 @@ import (
 type VehicleType string
 
 const (
+	VehicleCanter    VehicleType = "Canter"
+	VehicleTipper    VehicleType = "Tipper"
 	VehicleTricycle  VehicleType = "Tricycle"
 	VehicleVan       VehicleType = "Van"
 	VehicleTruck     VehicleType = "Truck"

@@ -40,7 +40,7 @@ type CreateDriverProfileRequest struct {
 	FullName          string             `json:"full_name" binding:"required"`
 	PhoneNumber       string             `json:"phone_number" binding:"required"`
 	LicenseNumber     string             `json:"license_number" binding:"required"`
-	VehicleType       models.VehicleType `json:"vehicle_type" binding:"required,oneof=Tricycle Van Truck Trucks Flatbed Flatbeds Trailer"`
+	VehicleType       models.VehicleType `json:"vehicle_type" binding:"required,oneof=Tricycle Van Truck Trucks Flatbed Flatbeds Trailer Canter Tipper"`
 	PlateNumber       string             `json:"plate_number" binding:"required"`
 	VehicleCapacity   float64            `json:"vehicle_capacity" binding:"required"`
 	ProfilePictureURL *string            `json:"profile_picture_url"`
