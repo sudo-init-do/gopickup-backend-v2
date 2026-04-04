@@ -52,11 +52,12 @@ type DriverProfile struct {
 
 type VendorProfile struct {
 	UserID         uuid.UUID `gorm:"type:uuid;primaryKey" json:"user_id"`
-	StoreName      string    `gorm:"not null" json:"store_name"`
-	PhoneNumber    string    `gorm:"not null" json:"phone_number"`
-	BusinessType   string    `gorm:"not null" json:"business_type"`
-	Address        string    `gorm:"not null" json:"address"`
-	StoreBannerURL *string   `json:"store_banner_url,omitempty"`
+	StoreName                  string    `gorm:"not null" json:"store_name"`
+	PhoneNumber                string    `gorm:"not null" json:"phone_number"`
+	BusinessType               string    `gorm:"not null" json:"business_type"`
+	Address                    string    `gorm:"not null" json:"address"`
+	BusinessRegistrationNumber string    `gorm:"not null" json:"business_registration_number"`
+	StoreBannerURL             *string   `json:"store_banner_url,omitempty"`
 	IsApproved     bool      `gorm:"default:false" json:"is_approved"`
 	Products       []Product `gorm:"foreignKey:VendorID" json:"products,omitempty"`
 

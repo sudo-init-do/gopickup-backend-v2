@@ -49,9 +49,10 @@ type CreateDriverProfileRequest struct {
 type CreateVendorProfileRequest struct {
 	StoreName      string  `json:"store_name" binding:"required"`
 	PhoneNumber    string  `json:"phone_number" binding:"required"`
-	BusinessType   string  `json:"business_type" binding:"required"`
-	Address        string  `json:"address" binding:"required"`
-	StoreBannerURL *string `json:"store_banner_url"`
+	BusinessType               string  `json:"business_type" binding:"required"`
+	Address                    string  `json:"address" binding:"required"`
+	BusinessRegistrationNumber string  `json:"business_registration_number" binding:"required"`
+	StoreBannerURL             *string `json:"store_banner_url"`
 }
 
 type UpdateProfileRequest struct {
@@ -69,8 +70,9 @@ type UpdateProfileRequest struct {
 
 	// Vendor specific
 	StoreName      *string `json:"store_name"`
-	BusinessType   *string `json:"business_type"`
-	StoreBannerURL *string `json:"store_banner_url"`
+	BusinessType               *string `json:"business_type"`
+	BusinessRegistrationNumber *string `json:"business_registration_number"`
+	StoreBannerURL             *string `json:"store_banner_url"`
 }
 
 // Create methods
@@ -212,6 +214,7 @@ func (s *ProfileService) CreateVendorProfile(userID uuid.UUID, req CreateVendorP
 		profile.PhoneNumber = req.PhoneNumber
 		profile.BusinessType = req.BusinessType
 		profile.Address = req.Address
+		profile.BusinessRegistrationNumber = req.BusinessRegistrationNumber
 		if req.StoreBannerURL != nil {
 			profile.StoreBannerURL = req.StoreBannerURL
 		}
@@ -223,10 +226,11 @@ func (s *ProfileService) CreateVendorProfile(userID uuid.UUID, req CreateVendorP
 		UserID:         userID,
 		StoreName:      req.StoreName,
 		PhoneNumber:    req.PhoneNumber,
-		BusinessType:   req.BusinessType,
-		Address:        req.Address,
-		StoreBannerURL: req.StoreBannerURL,
-		IsApproved:     true,
+		BusinessType:               req.BusinessType,
+		Address:                    req.Address,
+		BusinessRegistrationNumber: req.BusinessRegistrationNumber,
+		StoreBannerURL:             req.StoreBannerURL,
+		IsApproved:                 true,
 	}
 
 	if err := db.DB.Create(&profile).Error; err != nil {
@@ -296,6 +300,9 @@ func (s *ProfileService) UpdateProfile(userID uuid.UUID, role models.UserRole, r
 		}
 		if req.BusinessType != nil {
 			profile.BusinessType = *req.BusinessType
+		}
+		if req.BusinessRegistrationNumber != nil {
+			profile.BusinessRegistrationNumber = *req.BusinessRegistrationNumber
 		}
 		if req.Address != nil {
 			profile.Address = *req.Address
