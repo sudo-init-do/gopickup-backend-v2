@@ -92,6 +92,23 @@ func (s *AdminService) UpdateOrderStatus(orderID uuid.UUID, status models.OrderS
 	return s.db.Model(&models.Order{}).Where("id = ?", orderID).Update("status", status).Error
 }
 
+// VerifyPayment is called by admin after confirming the client's payment off-platform.
+// Moves order from payment_made → processing, making it visible to all approved drivers.
+func (s *AdminService) VerifyPayment(orderID uuid.UUID, agreedPrice *float64) error {
+	var o models.Order
+	if err := s.db.First(&o, "id = ?", orderID).Error; err != nil {
+		return errors.New("order not found")
+	}
+	if o.Status != models.OrderPaymentMade {
+		return errors.New("order is not awaiting payment verification")
+	}
+	updates := map[string]interface{}{"status": models.OrderProcessing}
+	if agreedPrice != nil {
+		updates["agreed_price"] = *agreedPrice
+	}
+	return s.db.Model(&models.Order{}).Where("id = ?", orderID).Updates(updates).Error
+}
+
 func (s *AdminService) DeleteUser(userID uuid.UUID) error {
 	var user models.User
 	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {

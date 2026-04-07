@@ -9,24 +9,25 @@ import (
 )
 
 type Config struct {
-	AppEnv              string
-	AppURL              string
-	AppPort             string
-	DBDriver            string
-	DBHost              string
-	DBPort              string
-	DBUser              string
-	DBPassword          string
-	DBName              string
-	DatabaseURL         string
-	PlunkAPIKey         string
-	PlunkFromEmail      string
-	PlunkFromName       string
-	JWTSecret           string
-	CorsOrigins         string
-	MetricsEnabled      bool
-	RedisURL            string
-	DefaultProductImage string
+	AppEnv                 string
+	AppURL                 string
+	AppPort                string
+	DBDriver               string
+	DBHost                 string
+	DBPort                 string
+	DBUser                 string
+	DBPassword             string
+	DBName                 string
+	DatabaseURL            string
+	PlunkAPIKey            string
+	PlunkFromEmail         string
+	PlunkFromName          string
+	JWTSecret              string
+	CorsOrigins            string
+	MetricsEnabled         bool
+	RedisURL               string
+	DefaultProductImage    string
+	WhatsAppSupportNumber  string // e.g. 2348012345678 (no + prefix)
 }
 
 func LoadConfig() (*Config, error) {
@@ -35,24 +36,25 @@ func LoadConfig() (*Config, error) {
 	_ = godotenv.Load()
 
 	config := &Config{
-		AppEnv:              getEnv("APP_ENV", "development"),
-		AppURL:              getEnv("APP_URL", "http://localhost:8080"),
-		AppPort:             getEnv("APP_PORT", "8080"),
-		DBDriver:            getEnv("DB_DRIVER", "postgres"),
-		DBHost:              getEnv("DB_HOST", ""),
-		DBPort:              getEnv("DB_PORT", ""),
-		DBUser:              getEnv("DB_USER", ""),
-		DBPassword:          getEnv("DB_PASSWORD", ""),
-		DBName:              getEnv("DB_NAME", ""),
-		DatabaseURL:         getEnv("DATABASE_URL", ""),
-		PlunkAPIKey:         getEnv("PLUNK_API_KEY", ""),
-		PlunkFromEmail:      getEnv("PLUNK_FROM_EMAIL", ""),
-		PlunkFromName:       getEnv("PLUNK_FROM_NAME", ""),
-		JWTSecret:           getEnv("JWT_SECRET", ""),
-		CorsOrigins:         getEnv("CORS_ALLOW_ORIGINS", "*"),
-		MetricsEnabled:      getEnv("ENABLE_METRICS", "false") == "true",
-		RedisURL:            getEnv("REDIS_URL", "redis://localhost:6379/0"),
-		DefaultProductImage: getEnv("DEFAULT_PRODUCT_IMAGE", "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&q=80"), // Logistics-themed placeholder
+		AppEnv:                getEnv("APP_ENV", "development"),
+		AppURL:                getEnv("APP_URL", "http://localhost:8080"),
+		AppPort:               getEnv("APP_PORT", "8080"),
+		DBDriver:              getEnv("DB_DRIVER", "postgres"),
+		DBHost:                getEnv("DB_HOST", ""),
+		DBPort:                getEnv("DB_PORT", ""),
+		DBUser:                getEnv("DB_USER", ""),
+		DBPassword:            getEnv("DB_PASSWORD", ""),
+		DBName:                getEnv("DB_NAME", ""),
+		DatabaseURL:           getEnv("DATABASE_URL", ""),
+		PlunkAPIKey:           getEnv("PLUNK_API_KEY", ""),
+		PlunkFromEmail:        getEnv("PLUNK_FROM_EMAIL", ""),
+		PlunkFromName:         getEnv("PLUNK_FROM_NAME", ""),
+		JWTSecret:             getEnv("JWT_SECRET", ""),
+		CorsOrigins:           getEnv("CORS_ALLOW_ORIGINS", "*"),
+		MetricsEnabled:        getEnv("ENABLE_METRICS", "false") == "true",
+		RedisURL:              getEnv("REDIS_URL", "redis://localhost:6379/0"),
+		DefaultProductImage:   getEnv("DEFAULT_PRODUCT_IMAGE", "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&q=80"),
+		WhatsAppSupportNumber: getEnv("WHATSAPP_SUPPORT_NUMBER", ""),
 	}
 
 	// Production logging

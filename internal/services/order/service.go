@@ -3,6 +3,7 @@ package order
 import (
 	"errors"
 	"fmt"
+	"gopickup/internal/config"
 	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"gopickup/internal/services/audit"
@@ -30,16 +31,18 @@ type CheckoutRequest struct {
 }
 
 type CheckoutResponse struct {
-	Order       *models.Order `json:"order"`
-	WhatsAppURL string        `json:"whatsapp_url,omitempty"`
+	Order            *models.Order `json:"order"`
+	WhatsAppURL      string        `json:"whatsapp_url"`       // Always set — opens GoPickup support chat
+	SupportPhone     string        `json:"support_phone"`      // GoPickup support WhatsApp number
 }
 
 type OrderService struct {
 	audit *audit.AuditService
+	cfg   *config.Config
 }
 
-func NewOrderService(audit *audit.AuditService) *OrderService {
-	return &OrderService{audit: audit}
+func NewOrderService(audit *audit.AuditService, cfg *config.Config) *OrderService {
+	return &OrderService{audit: audit, cfg: cfg}
 }
 
 // Checkout creates an order transactionally: validates products, stock, single vendor, creates order/items, decrements stock.
@@ -155,25 +158,50 @@ func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*Check
 		Order: order,
 	}
 
-	// Generate WhatsApp URL if needed
-	if req.PaymentMethod == models.PaymentWhatsApp {
-		var vendor models.VendorProfile
-		if err := db.GetDB().First(&vendor, "user_id = ?", order.VendorID).Error; err == nil {
-			// Format: https://wa.me/2348030000000?text=Hi...
-			phone := vendor.PhoneNumber
-			if !strings.HasPrefix(phone, "+") && !strings.HasPrefix(phone, "234") {
-				// Basic normalization for Nigerian numbers if they start with 0
-				if strings.HasPrefix(phone, "0") {
-					phone = "234" + phone[1:]
-				}
-			}
-			msg := fmt.Sprintf("Hi, I just placed an order on GoPickup!\n\nOrder ID: %s\nTotal: ₦%.2f\n\nPlease confirm my order and share payment details.", 
-				order.ID.String()[:8], order.TotalProductAmount)
-			resp.WhatsAppURL = fmt.Sprintf("https://wa.me/%s?text=%s", phone, url.QueryEscape(msg))
-		}
+	// Always generate a WhatsApp link to GoPickup Support for negotiation
+	supportPhone := s.cfg.WhatsAppSupportNumber
+	if supportPhone == "" {
+		supportPhone = "2348000000000" // fallback placeholder
+	}
+	// Normalise: strip leading + if present
+	supportPhone = strings.TrimPrefix(supportPhone, "+")
+
+	var vendorName string
+	var vendor models.VendorProfile
+	if err := db.GetDB().First(&vendor, "user_id = ?", order.VendorID).Error; err == nil {
+		vendorName = vendor.StoreName
 	}
 
+	msg := fmt.Sprintf(
+		"Hi GoPickup Support! 👋\n\nI'd like to negotiate an order.\n\nOrder ID: %s\nVendor: %s\nEstimated Total: ₦%.2f\nDelivery Address: %s\n\nPlease help me finalise the price, quantity, and payment details.",
+		order.ID.String()[:8], vendorName, order.TotalProductAmount, order.DeliveryAddress,
+	)
+	resp.WhatsAppURL = fmt.Sprintf("https://wa.me/%s?text=%s", supportPhone, url.QueryEscape(msg))
+	resp.SupportPhone = supportPhone
+
 	return resp, nil
+}
+
+// ClientReportPaymentMade is called when the client taps "I Have Made Payment".
+// Moves the order from pending/awaiting_payment → payment_made for admin verification.
+func (s *OrderService) ClientReportPaymentMade(clientID uuid.UUID, orderID uuid.UUID) (*models.Order, error) {
+	var o models.Order
+	if err := db.GetDB().First(&o, "id = ?", orderID).Error; err != nil {
+		return nil, err
+	}
+	if o.ClientID != clientID {
+		return nil, errors.New("forbidden")
+	}
+	if o.Status != models.OrderPending && o.Status != models.OrderAwaitingPayment {
+		return nil, errors.New("order is not in a state where payment can be reported")
+	}
+	o.Status = models.OrderPaymentMade
+	if err := db.GetDB().Save(&o).Error; err != nil {
+		return nil, err
+	}
+	s.audit.Log(clientID, "CLIENT_REPORTED_PAYMENT", "order", o.ID, nil)
+	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
+	return &o, nil
 }
 
 // ConfirmPayment moves order from awaiting_payment to processing (Vendor/Admin only)
@@ -379,28 +407,45 @@ func (s *OrderService) VendorMarkReady(vendorID uuid.UUID, orderID uuid.UUID) (*
 	return &o, nil
 }
 
-// DriverAcceptLoad is called by a driver after WhatsApp negotiation to officially start delivery.
+// DriverAcceptLoad is called by a driver after WhatsApp negotiation to officially take the job.
+// Supports two paths:
+//  1. Admin pre-assigned (status = assigned, driverID already set): driver just confirms.
+//  2. Open pool (status = processing, no driver set yet): driver self-assigns.
 func (s *OrderService) DriverAcceptLoad(driverID uuid.UUID, orderID uuid.UUID) (*models.Order, error) {
 	var o models.Order
-	if err := db.GetDB().First(&o, "id = ?", orderID).Error; err != nil {
-		return nil, err
-	}
+	err := db.GetDB().Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&o, "id = ?", orderID).Error; err != nil {
+			return err
+		}
 
-	if o.DriverID == nil || *o.DriverID != driverID {
-		return nil, errors.New("this load is not assigned to you")
-	}
+		switch o.Status {
+		case models.OrderAssigned:
+			// Admin pre-assigned path — must be assigned to this driver
+			if o.DriverID == nil || *o.DriverID != driverID {
+				return errors.New("this load is not assigned to you")
+			}
+		case models.OrderProcessing:
+			// Open pool path — first approved driver to accept wins
+			var profile models.DriverProfile
+			if err := tx.First(&profile, "user_id = ?", driverID).Error; err != nil {
+				return errors.New("driver profile not found")
+			}
+			if !profile.IsApproved {
+				return errors.New("only approved drivers can accept jobs")
+			}
+			o.DriverID = &driverID
+		default:
+			return errors.New("job cannot be accepted in its current status")
+		}
 
-	if o.Status != models.OrderAssigned {
-		return nil, errors.New("load cannot be accepted in current status")
-	}
-
-	o.Status = models.OrderInProgress
-	if err := db.GetDB().Save(&o).Error; err != nil {
+		o.Status = models.OrderInProgress
+		return tx.Save(&o).Error
+	})
+	if err != nil {
 		return nil, err
 	}
 
 	s.audit.Log(driverID, "DRIVER_ACCEPTED_LOAD", "order", o.ID, nil)
 	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
-
 	return &o, nil
 }

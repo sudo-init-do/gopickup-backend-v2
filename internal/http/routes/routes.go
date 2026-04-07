@@ -53,8 +53,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	authService := auth.NewAuthService(emailService, cfg)
 	profileService := profile.NewProfileService(emailService, db.GetRedis())
 	productService := product.NewProductService(auditService, db.GetRedis(), cfg)
-	orderService := order.NewOrderService(auditService)
-	driverService := driver.NewDriverService(auditService)
+	orderService := order.NewOrderService(auditService, cfg)
+	driverService := driver.NewDriverService(auditService, cfg)
 	loadService := load.NewLoadService(auditService)
 	notifService := notification.NewNotificationService(db.GetDB())
 	chatService := chat.NewChatService(db.GetDB(), notifService, auditService)
@@ -184,6 +184,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			{
 				clientGroup.POST("/checkout", orderH.Checkout)
 				clientGroup.PATCH("/:id/cancel", orderH.ClientCancelOrder)
+				// "I Have Made Payment" — client self-reports off-platform payment
+				clientGroup.POST("/:id/payment-made", orderH.ClientReportPaymentMade)
 			}
 
 			// Global Protected Upload Route
@@ -237,6 +239,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				adminGroup.DELETE("/users/:id", adminH.DeleteUser)
 				adminGroup.POST("/orders/assign-driver", adminH.AssignDriver)
 				adminGroup.PATCH("/orders/status", adminH.UpdateOrderStatus)
+				// Verify that client's off-platform payment was received → opens order to drivers
+				adminGroup.POST("/orders/:id/verify-payment", adminH.VerifyPayment)
 			}
 
 			// Notification Routes

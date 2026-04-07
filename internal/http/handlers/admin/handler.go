@@ -146,6 +146,27 @@ func (h *AdminHandler) UpdateOrderStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Order status updated by admin"})
 }
 
+// VerifyPayment handles POST /admin/orders/:id/verify-payment
+// Called by admin after confirming the client's off-platform payment.
+// Moves order from payment_made → processing, making it visible to all approved drivers.
+func (h *AdminHandler) VerifyPayment(c *gin.Context) {
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+	var body struct {
+		AgreedPrice *float64 `json:"agreed_price"` // optional: set final negotiated price
+	}
+	_ = c.ShouldBindJSON(&body) // optional body — don't fail if empty
+
+	if err := h.adminService.VerifyPayment(orderID, body.AgreedPrice); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Payment verified. Order is now open to drivers."})
+}
+
 func (h *AdminHandler) DeleteProduct(c *gin.Context) {
 	idStr := c.Param("id")
 	productID, err := uuid.Parse(idStr)

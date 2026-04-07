@@ -10,11 +10,12 @@ import (
 type OrderStatus string
 
 const (
-	OrderPending         OrderStatus = "pending"
-	OrderAwaitingPayment OrderStatus = "awaiting_payment" // Specifically for WhatsApp/Manual payment
-	OrderProcessing      OrderStatus = "processing"
-	OrderAssigned        OrderStatus = "assigned"    // Admin assigned driver, waiting for driver acceptance
-	OrderInProgress      OrderStatus = "in_progress" // Driver accepted
+	OrderPending         OrderStatus = "pending"           // Order created, negotiation not yet started
+	OrderAwaitingPayment OrderStatus = "awaiting_payment"  // Client redirected to WhatsApp to negotiate
+	OrderPaymentMade     OrderStatus = "payment_made"      // Client self-reported payment, awaiting admin verification
+	OrderProcessing      OrderStatus = "processing"        // Admin verified payment; visible to all approved drivers
+	OrderAssigned        OrderStatus = "assigned"          // Admin manually assigned a specific driver (override)
+	OrderInProgress      OrderStatus = "in_progress"       // Driver tapped "I Accept This Job"
 	OrderPickedUp        OrderStatus = "picked_up"
 	OrderOnTheWay        OrderStatus = "on_the_way"
 	OrderDelivered       OrderStatus = "delivered"

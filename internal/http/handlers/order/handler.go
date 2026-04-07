@@ -116,6 +116,35 @@ func (h *OrderHandler) DriverAcceptLoad(c *gin.Context) {
 	c.JSON(http.StatusOK, order)
 }
 
+// ClientReportPaymentMade handles POST /orders/:id/payment-made
+// Called when client taps "I Have Made Payment" after paying the vendor off-platform.
+func (h *OrderHandler) ClientReportPaymentMade(c *gin.Context) {
+	userIDInf, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	roleInf, _ := c.Get("role")
+	if roleInf == nil || roleInf.(string) != string(models.RoleClient) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only clients can report payment"})
+		return
+	}
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+	o, err := h.service.ClientReportPaymentMade(userIDInf.(uuid.UUID), orderID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Payment reported. Our team will verify and confirm your order shortly.",
+		"order":   o,
+	})
+}
+
 func (h *OrderHandler) VendorUpdateStatus(c *gin.Context) {
 	userIDInf, ok := c.Get("userID")
 	if !ok {

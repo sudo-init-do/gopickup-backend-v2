@@ -1,8 +1,8 @@
 # Frontend Integration Specification
 
-**Version**: 1.1.0
-**Status**: Updated (Manual Order & Delivery Flow)
-**Last Updated**: 2026-03-26
+**Version**: 1.2.0
+**Status**: Updated (Manual WhatsApp Negotiation & Delivery Flow)
+**Last Updated**: 2026-04-07
 
 ---
 
@@ -19,13 +19,15 @@ The GoPickup backend provides a RESTful API and WebSocket service for a multi-ro
 
 ## 2. Order & Delivery Status Flow
 
-The platform has moved from an automated bidding system to a **Manual, WhatsApp-mediated, Admin-controlled flow**.
+The platform follows a **Manual, WhatsApp-mediated flow**.
 
 ### 2.1 Order Status Enum
-- `pending`: Client placed an order for vendor materials.
-- `processing`: Negotiation/Payment status (User should be directed to WhatsApp Support).
-- `assigned`: Admin has assigned a specific driver to this load.
-- `in_progress`: Driver has officially "Accepted" the load in the app after WhatsApp negotiation.
+- `pending`: Client placed an order. Negotiation with GoPickup Support has NOT yet started.
+- `awaiting_payment`: Negotiation is ongoing (GoPickup Support chat).
+- `payment_made`: Client has self-reported that payment was made off-platform.
+- `processing`: Admin verified payment. Order is now **visible to all approved drivers** in the app.
+- `assigned`: Admin has manually assigned a specific driver (optional manual override).
+- `in_progress`: Driver has officially "Accepted" the job in the app.
 - `picked_up`: Admin manually marks that the driver has picked up the goods.
 - `on_the_way`: Admin manually marks that the goods are in transit.
 - `delivered`: Admin manually marks that the delivery is completed.
@@ -39,37 +41,31 @@ The platform has moved from an automated bidding system to a **Manual, WhatsApp-
 1. **Browse**: `GET /products`
 2. **Order**: `POST /orders/checkout`
    - **Backend Action**: Order created in `pending` status.
-   - **Frontend Action**: Redirect user to WhatsApp Support Link for price negotiation and payment.
-3. **Monitor**: Listen for `order_status_updated` via WebSocket.
-   - Status moves to `assigned` once Admin picks a driver.
-   - Status moves to `in_progress` once the Driver accepts.
-   - Status moves to `picked_up`, `on_the_way`, and `delivered` as Admin updates progress.
+   - **Backend Response**: Returns a `whatsapp_url` that opens a chat with GoPickup Support.
+   - **Frontend Action**: Show the "Negotiate on WhatsApp" button using the returned URL.
+3. **Negotiation**: Client discusses price, quantity, and payment with Support on WhatsApp.
+4. **Report Payment**: After paying the vendor (as agreed on WhatsApp), the client returns to the app and taps "I Have Made Payment."
+   - **Endpoint**: `POST /api/v1/orders/:id/payment-made`
+   - **Result**: Status moves to `payment_made`.
+5. **Monitor**: Status moves to `processing` (after Admin verification), then follows the delivery stages.
 
-### 3.2 Driver Flow (Taking Loads)
-1. **Check Assigned Loads**: `GET /api/v1/jobs/assigned`
-   - Only shows loads specifically assigned to this driver with status `assigned`.
-2. **Negotiate**: The driver sees a "Chat with Support" (WhatsApp) button on the load.
-3. **Accept**: After WhatsApp agreement, the driver clicks "Accept Task" in the app.
+### 3.2 Driver Flow (Taking Jobs)
+1. **Check Jobs**: `GET /api/v1/jobs/assigned`
+   - Shows all jobs in `processing` (available to all) OR jobs specifically `assigned` to this driver.
+2. **Negotiate Delivery**: Every job listing includes a `whatsapp_url`.
+   - **Frontend Action**: Driver taps "Negotiate on WhatsApp" to discuss the delivery fee with GoPickup Support.
+3. **Accept Job**: After agreement on WhatsApp, the driver clicks "I Accept This Job" in the app.
    - **Endpoint**: `POST /api/v1/jobs/:id/accept`
-   - **Result**: Order status becomes `in_progress`.
-4. **Execution**: The driver simply delivers the goods. All status updates to the client (picked up, on the way, etc.) are handled manually by the Admin, not the Driver.
+   - **Result**: Order status becomes `in_progress`. The job is now exclusively yours.
+4. **Execution**: Driver performs delivery. Status updates (`picked_up`, `on_the_way`, `delivered`) are currently handled by Admin.
 
 ### 3.3 Admin Flow (Control Center)
-1. **View Orders**: `GET /api/v1/admin/orders`
-2. **Assign Driver**:
-   - **Endpoint**: `POST /admin/orders/assign-driver`
-   - **Body**:
-     ```json
-     {
-       "order_id": "uuid",
-       "driver_id": "uuid",
-       "agreed_price": 50000,
-       "delivery_fee": 5000
-     }
-     ```
-   - **Result**: Order status becomes `assigned`. Driver is notified.
-3. **Manual Progress Update**:
-   - **Endpoint**: `PATCH /admin/orders/status`
+1. **Verify Payment**: After receiving payment confirmation off-platform, Admin verifies the order.
+   - **Endpoint**: `POST /api/v1/admin/orders/:id/verify-payment`
+   - **Body**: `{ "agreed_price": 50000 }` (optional)
+   - **Result**: Status moves to `processing`.
+2. **Review Orders**: `GET /api/v1/admin/orders`
+3. **Manual Progress Update**: `PATCH /api/v1/admin/orders/status`
    - **Body**: `{ "order_id": "uuid", "status": "picked_up" }`
    - **Options**: `picked_up`, `on_the_way`, `delivered`.
 
@@ -77,28 +73,17 @@ The platform has moved from an automated bidding system to a **Manual, WhatsApp-
 
 ## 4. Key Endpoints Reference
 
-### 4.1 Orders (Client/Shared)
-- `POST /orders/checkout`: Place initial order.
-- `PATCH /orders/:id/cancel`: Cancel a pending order (Client only).
+### 4.1 Orders (Client)
+- `POST /orders/checkout`: Initial checkout (returns `whatsapp_url`).
+- `POST /orders/:id/payment-made`: Client signals payment completion.
 - `GET /orders`: List my orders.
-- `GET /orders/:id`: Get order details (includes `agreed_price` and `agreed_delivery_fee`).
+- `GET /orders/:id`: Details (includes `agreed_price`, `agreed_delivery_fee`).
 
 ### 4.2 Jobs (Driver)
-- `GET /jobs/assigned`: List my specifically assigned loads.
-- `POST /jobs/:id/accept`: Formally accept an assigned load.
+- `GET /jobs/assigned`: List all available jobs (processing) and pre-assigned jobs.
+- `POST /jobs/:id/accept`: Formally take an available job.
 
 ### 4.3 Admin (Restricted)
-- `POST /admin/orders/assign-driver`: Assign a driver and set final agreed prices.
-- `PATCH /admin/orders/status`: Manually advance the delivery status for the client.
-- `GET /admin/users`: List users to find a driver ID for assignment.
-
----
-
-## 5. QA Checklist for New Flow
-- [ ] Client: Checkout product (Status = `pending`).
-- [ ] Admin: Assign a driver (Status = `assigned`).
-- [ ] Driver: See job in `assigned` list (NOT in a public public board).
-- [ ] Driver: Accept job (Status = `in_progress`).
-- [ ] Admin: Mark as `picked_up` (Client sees update).
-- [ ] Admin: Mark as `on_the_way` (Client sees update).
-- [ ] Admin: Mark as `delivered` (Order completes).
+- `POST /admin/orders/:id/verify-payment`: Confirm payment and release to drivers.
+- `PATCH /admin/orders/status`: Manually advance delivery status.
+- `POST /admin/orders/assign-driver`: (Optional) Force assign a specific driver.
