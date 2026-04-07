@@ -86,7 +86,7 @@ func (s *AuthService) Register(req RegisterRequest) (string, *MeResponse, error)
 	if isNewUser {
 		role := models.RoleClient
 		if req.Role != "" {
-			role = models.UserRole(req.Role)
+			role = models.UserRole(strings.ToLower(strings.TrimSpace(req.Role)))
 		}
 
 		user = models.User{

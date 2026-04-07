@@ -16,9 +16,11 @@ type Product struct {
 	Price         float64       `gorm:"type:decimal(10,2);not null;check:price >= 0;index" json:"price"` // Indexed for filtering
 	Category      string        `gorm:"not null;index" json:"category"`
 	StockQuantity        int           `gorm:"not null;check:stock_quantity >= 0" json:"stock_quantity"`
+	Stock                int           `gorm:"-" json:"stock"` // Alias for frontend
 	MinimumOrderQuantity int           `gorm:"not null;default:1;check:minimum_order_quantity >= 1" json:"minimum_order_quantity"`
+	MOQ                  int           `gorm:"-" json:"moq"` // Alias for frontend
 	ImageURL             string        `json:"image_url"`
-	IsActive      bool          `gorm:"default:true;index" json:"is_active"`
+	IsActive             bool          `gorm:"default:true;index" json:"is_active"`
 
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`

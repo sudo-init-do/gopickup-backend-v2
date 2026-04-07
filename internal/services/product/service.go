@@ -350,11 +350,14 @@ func (s *ProductService) ListProducts(filter ProductFilter) (*PaginatedResponse,
 		return nil, err
 	}
 
-	// Image fallback
+	// Image fallback & Aliases
 	for i := range products {
 		if products[i].ImageURL == "" {
 			products[i].ImageURL = s.config.DefaultProductImage
 		}
+		// Populate aliases for frontend compatibility
+		products[i].Stock = products[i].StockQuantity
+		products[i].MOQ = products[i].MinimumOrderQuantity
 	}
 
 	return &PaginatedResponse{
@@ -388,6 +391,10 @@ func (s *ProductService) GetProduct(id uuid.UUID) (*models.Product, error) {
 	if err := db.DB.Preload("Vendor").First(&product, id).Error; err != nil {
 		return nil, errors.New("product not found")
 	}
+
+	// Populate aliases
+	product.Stock = product.StockQuantity
+	product.MOQ = product.MinimumOrderQuantity
 
 	// 3. Cache in Redis
 	if s.redis != nil {

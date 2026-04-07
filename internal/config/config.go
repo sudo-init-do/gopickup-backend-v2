@@ -54,7 +54,7 @@ func LoadConfig() (*Config, error) {
 		MetricsEnabled:        getEnv("ENABLE_METRICS", "false") == "true",
 		RedisURL:              getEnv("REDIS_URL", "redis://localhost:6379/0"),
 		DefaultProductImage:   getEnv("DEFAULT_PRODUCT_IMAGE", "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&q=80"),
-		WhatsAppSupportNumber: getEnv("WHATSAPP_SUPPORT_NUMBER", ""),
+		WhatsAppSupportNumber: getEnv("WHATSAPP_SUPPORT_NUMBER", "2348087042206"),
 	}
 
 	// Production logging
