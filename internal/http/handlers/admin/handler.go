@@ -6,6 +6,7 @@ import (
 	"gopickup/internal/services/admin"
 	"gopickup/internal/services/product"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,12 +33,16 @@ func NewAdminHandler(adminService *admin.AdminService, productService *product.P
 // @Success 200 {array} models.User
 // @Failure 500 {object} map[string]string
 // @Router /admin/users [get]
-func (h *AdminHandler) GetUsers(c *gin.Context) {
-	role := c.Query("role")
+	c.JSON(http.StatusOK, users)
+}
 
-	users, err := h.adminService.GetUsers(role)
+func (h *AdminHandler) GetRecentUsers(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, _ := strconv.Atoi(limitStr)
+
+	users, err := h.adminService.GetRecentUsers(limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch recent users"})
 		return
 	}
 

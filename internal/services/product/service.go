@@ -59,13 +59,14 @@ type UpdateProductRequest struct {
 }
 
 type ProductFilter struct {
-	Category *string
-	MinPrice *float64
-	MaxPrice *float64
-	VendorID *uuid.UUID
-	Search   *string
-	Page     int
-	Limit    int
+	Category      *string
+	MinPrice      *float64
+	MaxPrice      *float64
+	VendorID      *uuid.UUID
+	Search        *string
+	Page          int
+	Limit         int
+	UniqueVendors bool // If true, only return one product per vendor (latest)
 }
 
 type VendorFilter struct {
@@ -312,14 +313,27 @@ func (s *ProductService) ListProducts(filter ProductFilter) (*PaginatedResponse,
 		query = query.Where("vendor_id = ?", *filter.VendorID)
 	}
 	if filter.Search != nil && *filter.Search != "" {
+		searchTerm := "%" + *filter.Search + "%"
+		// Join with vendor profile to search by store name too
+		query = query.Joins("JOIN vendor_profiles ON vendor_profiles.user_id = products.vendor_id")
+		
 		if db.DB.Dialector.Name() == "postgres" {
-			// Use Full Text Search for PostgreSQL
-			// websearch_to_tsquery is safer for user input than to_tsquery
-			query = query.Where("to_tsvector('english', name || ' ' || coalesce(description, '')) @@ websearch_to_tsquery('english', ?)", *filter.Search)
+			// PostgreSQL Full Text Search across product name, desc, and vendor store name
+			query = query.Where("to_tsvector('english', products.name || ' ' || coalesce(products.description, '') || ' ' || vendor_profiles.store_name) @@ websearch_to_tsquery('english', ?)", *filter.Search)
 		} else {
-			// Fallback for SQLite or other DBs
-			search := "%" + *filter.Search + "%"
-			query = query.Where("name LIKE ? OR description LIKE ?", search, search)
+			// SQLite/Generic fallback
+			query = query.Where("(products.name LIKE ? OR products.description LIKE ? OR vendor_profiles.store_name LIKE ?)", searchTerm, searchTerm, searchTerm)
+		}
+	}
+
+	// Distinct by vendor if requested (Task 3 & 4)
+	if filter.UniqueVendors {
+		if db.DB.Dialector.Name() == "postgres" {
+			// Postgres DISTINCT ON
+			query = query.Distinct("ON (products.vendor_id) products.*").Order("products.vendor_id, products.created_at DESC")
+		} else {
+			// SQLite/Generic grouping (less precise but works)
+			query = query.Group("products.vendor_id")
 		}
 	}
 

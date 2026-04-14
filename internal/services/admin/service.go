@@ -32,6 +32,21 @@ func (s *AdminService) GetUsers(role string) ([]models.User, error) {
 	return users, nil
 }
 
+func (s *AdminService) GetRecentUsers(limit int) ([]models.User, error) {
+	var users []models.User
+	if limit <= 0 {
+		limit = 10
+	}
+	if err := s.db.Order("created_at desc").Limit(limit).
+		Preload("ClientProfile").
+		Preload("DriverProfile").
+		Preload("VendorProfile").
+		Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
 type PlatformStats struct {
 	TotalUsers     int64 `json:"total_users"`
 	TotalClients   int64 `json:"total_clients"`

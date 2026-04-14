@@ -174,6 +174,9 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 			filter.Limit = v
 		}
 	}
+	if val := c.Query("unique_vendors"); val == "true" {
+		filter.UniqueVendors = true
+	}
 
 	resp, err := h.service.ListProducts(filter)
 	if err != nil {

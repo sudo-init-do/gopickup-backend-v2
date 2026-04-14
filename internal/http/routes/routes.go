@@ -232,6 +232,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				adminGroup.PATCH("/drivers/:user_id/approve", profileH.ApproveDriver)
 				adminGroup.PATCH("/vendors/:user_id/approve", profileH.ApproveVendor)
 				adminGroup.GET("/users", adminH.GetUsers)
+				adminGroup.GET("/users/recent", adminH.GetRecentUsers)
 				adminGroup.GET("/stats", adminH.GetStats)
 				adminGroup.GET("/orders", adminH.GetOrders)
 				adminGroup.POST("/products", adminH.CreateProduct)
