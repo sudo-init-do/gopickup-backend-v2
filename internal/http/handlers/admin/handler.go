@@ -32,7 +32,15 @@ func NewAdminHandler(adminService *admin.AdminService, productService *product.P
 // @Param role query string false "User Role Filter"
 // @Success 200 {array} models.User
 // @Failure 500 {object} map[string]string
-// @Router /admin/users [get]
+func (h *AdminHandler) GetUsers(c *gin.Context) {
+	role := c.Query("role")
+
+	users, err := h.adminService.GetUsers(role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		return
+	}
+
 	c.JSON(http.StatusOK, users)
 }
 
