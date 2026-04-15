@@ -108,6 +108,13 @@ func (s *ProductService) CreateProduct(vendorID uuid.UUID, req CreateProductRequ
 		return nil, errors.New("vendor is not approved")
 	}
 
+	// 1.5 Limit to 1 product per vendor (Task 2)
+	var count int64
+	db.DB.Model(&models.Product{}).Where("vendor_id = ? AND is_active = ?", vendorID, true).Count(&count)
+	if count >= 1 {
+		return nil, errors.New("each vendor is limited to 1 product for now. Please upgrade your plan for more")
+	}
+
 	// 2. Create product
 	product := models.Product{
 		VendorID:      vendorID,

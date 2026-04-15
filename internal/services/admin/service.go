@@ -26,7 +26,7 @@ func (s *AdminService) GetUsers(role string) ([]models.User, error) {
 		query = query.Where("role = ?", role)
 	}
 
-	if err := query.Find(&users).Error; err != nil {
+	if err := query.Order("created_at desc").Find(&users).Error; err != nil {
 		return nil, err
 	}
 	return users, nil
