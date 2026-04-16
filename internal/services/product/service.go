@@ -352,10 +352,10 @@ func (s *ProductService) ListProducts(filter ProductFilter) (*PaginatedResponse,
 	// Pagination
 	limit := filter.Limit
 	if limit <= 0 {
-		limit = 10
+		limit = 50
 	}
-	if limit > 100 {
-		limit = 100
+	if limit > 200 {
+		limit = 200
 	}
 
 	page := filter.Page
