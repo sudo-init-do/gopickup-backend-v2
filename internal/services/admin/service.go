@@ -83,7 +83,13 @@ func (s *AdminService) GetStats() (*PlatformStats, error) {
 
 func (s *AdminService) GetOrders() ([]models.Order, error) {
 	var orders []models.Order
-	if err := s.db.Order("created_at desc").Find(&orders).Error; err != nil {
+	if err := s.db.
+		Order("created_at desc").
+		Preload("Client").
+		Preload("Client.ClientProfile").
+		Preload("Vendor").
+		Preload("Items").
+		Find(&orders).Error; err != nil {
 		return nil, err
 	}
 	return orders, nil

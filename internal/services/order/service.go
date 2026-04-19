@@ -166,15 +166,16 @@ func (s *OrderService) Checkout(clientID uuid.UUID, req CheckoutRequest) (*Check
 	// Normalise: strip leading + if present
 	supportPhone = strings.TrimPrefix(supportPhone, "+")
 
-	var vendorName string
+	var vendorName, vendorLocation string
 	var vendor models.VendorProfile
 	if err := db.GetDB().First(&vendor, "user_id = ?", order.VendorID).Error; err == nil {
 		vendorName = vendor.StoreName
+		vendorLocation = vendor.Address
 	}
 
 	msg := fmt.Sprintf(
-		"Hi GoPickup Support! 👋\n\nI'd like to negotiate an order.\n\nOrder ID: %s\nVendor: %s\nEstimated Total: ₦%.2f\nDelivery Address: %s\n\nPlease help me finalise the price, quantity, and payment details.",
-		order.ID.String()[:8], vendorName, order.TotalProductAmount, order.DeliveryAddress,
+		"Hello GoPickup Support, I have an inquiry about my order: %s\nVENDOR: %s\nLOCATION: %s",
+		order.ID.String(), vendorName, vendorLocation,
 	)
 	resp.WhatsAppURL = fmt.Sprintf("https://wa.me/%s?text=%s", supportPhone, url.QueryEscape(msg))
 	resp.SupportPhone = supportPhone
