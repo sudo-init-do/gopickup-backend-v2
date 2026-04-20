@@ -47,11 +47,11 @@ type CreateDriverProfileRequest struct {
 }
 
 type CreateVendorProfileRequest struct {
-	StoreName      string  `json:"store_name" binding:"required"`
-	PhoneNumber    string  `json:"phone_number" binding:"required"`
+	StoreName                  string  `json:"store_name" binding:"required"`
+	PhoneNumber                string  `json:"phone_number" binding:"required"`
 	BusinessType               string  `json:"business_type" binding:"required"`
 	Address                    string  `json:"address" binding:"required"`
-	BusinessRegistrationNumber string  `json:"business_registration_number" binding:"required"`
+	BusinessRegistrationNumber string  `json:"business_registration_number"` // Optional — not required at onboarding
 	StoreBannerURL             *string `json:"store_banner_url"`
 }
 
