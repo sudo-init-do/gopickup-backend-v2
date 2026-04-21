@@ -304,7 +304,10 @@ func (s *ProductService) ListProducts(filter ProductFilter) (*PaginatedResponse,
 	var products []models.Product
 	var totalItems int64
 
-	query := db.DB.Model(&models.Product{}).Where("is_active = ?", true)
+	query := db.DB.Model(&models.Product{}).
+		Joins("JOIN vendor_profiles ON vendor_profiles.user_id = products.vendor_id").
+		Where("products.is_active = ?", true).
+		Where("vendor_profiles.is_approved = ?", true)
 
 	// Filters
 	if filter.Category != nil && *filter.Category != "" {
@@ -321,8 +324,6 @@ func (s *ProductService) ListProducts(filter ProductFilter) (*PaginatedResponse,
 	}
 	if filter.Search != nil && *filter.Search != "" {
 		searchTerm := "%" + *filter.Search + "%"
-		// Join with vendor profile to search by store name too
-		query = query.Joins("JOIN vendor_profiles ON vendor_profiles.user_id = products.vendor_id")
 		
 		if db.DB.Dialector.Name() == "postgres" {
 			// PostgreSQL Full Text Search across product name, desc, and vendor store name
