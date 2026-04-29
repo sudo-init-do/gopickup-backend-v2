@@ -231,3 +231,28 @@ func (h *ProfileHandler) ApproveVendor(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Vendor approved successfully"})
 }
+
+// DeleteAccount godoc
+// @Summary Delete user account
+// @Description Permanently delete the authenticated user's account and all associated data
+// @Tags profile
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /profile [delete]
+func (h *ProfileHandler) DeleteAccount(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+
+	if err := h.service.DeleteAccount(userID.(uuid.UUID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete account: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Account successfully deleted"})
+}
+

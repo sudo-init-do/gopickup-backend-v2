@@ -505,3 +505,45 @@ func (s *ProfileService) GetProfile(userID uuid.UUID, role models.UserRole) (int
 		return nil, errors.New("unknown role")
 	}
 }
+
+func (s *ProfileService) DeleteAccount(userID uuid.UUID) error {
+	// Start a transaction to ensure atomic deletion
+	tx := db.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Error; err != nil {
+		return err
+	}
+
+	// 1. Hard delete profiles
+	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.ClientProfile{})
+	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.DriverProfile{})
+	tx.Unscoped().Where("user_id = ?", userID).Delete(&models.VendorProfile{})
+
+	// 2. Hard delete products (if vendor)
+	tx.Unscoped().Where("vendor_id = ?", userID).Delete(&models.Product{})
+
+	// 3. Hard delete loads (if client)
+	tx.Unscoped().Where("client_id = ?", userID).Delete(&models.Load{})
+
+	// 4. Hard delete the user account
+	if err := tx.Unscoped().Where("id = ?", userID).Delete(&models.User{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 5. Invalidate cache (Delete all profile related keys)
+	if s.redis != nil {
+		s.redis.Del(context.Background(), "profile:"+userID.String())
+		s.redis.Del(context.Background(), fmt.Sprintf("profile:%s:client", userID))
+		s.redis.Del(context.Background(), fmt.Sprintf("profile:%s:driver", userID))
+		s.redis.Del(context.Background(), fmt.Sprintf("profile:%s:vendor", userID))
+	}
+
+	return tx.Commit().Error
+}
+
