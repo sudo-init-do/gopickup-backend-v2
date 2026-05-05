@@ -256,3 +256,33 @@ func (h *ProfileHandler) DeleteAccount(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Account successfully deleted"})
 }
 
+// DeleteAccountPage returns a simple HTML landing page for Google Play compliance
+func (h *ProfileHandler) DeleteAccountPage(c *gin.Context) {
+	html := `
+	<!DOCTYPE html>
+	<html>
+	<head>
+		<title>GoPickup - Account Deletion</title>
+		<style>
+			body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f7f6; }
+			.card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
+			h1 { color: #333; }
+			p { color: #666; line-height: 1.6; }
+			.brand { color: #5B21B6; font-weight: bold; }
+		</style>
+	</head>
+	<body>
+		<div class="card">
+			<h1 class="brand">GoPickup</h1>
+			<h2>Account Deletion</h2>
+			<p>To delete your account and all associated data, please follow these steps inside the <b>GoPickup App</b>:</p>
+			<p>1. Open the App<br>2. Go to <b>Profile Settings</b><br>3. Tap <b>Delete Account</b></p>
+			<p>Your data will be permanently removed from our systems within 24 hours of your request.</p>
+		</div>
+	</body>
+	</html>
+	`
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+}
+
+
