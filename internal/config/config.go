@@ -86,7 +86,21 @@ func LoadConfig() (*Config, error) {
 		log.Printf("Warning: PLUNK_API_KEY is missing. Email features disabled.")
 	}
 	if config.JWTSecret == "" {
+		if config.AppEnv == "production" {
+			// Empty secret means tokens are signed with "" — auth is fully
+			// broken/insecure, so fail fast with a clear message.
+			return nil, fmt.Errorf("JWT_SECRET is required in production")
+		}
 		log.Printf("Warning: JWT_SECRET is missing. Authentication will fail.")
+	} else if len(config.JWTSecret) < 32 && config.AppEnv == "production" {
+		// Warn (don't crash) so an existing deploy with a short secret keeps booting.
+		log.Printf("WARNING: JWT_SECRET is shorter than 32 characters. Use a longer random secret for production.")
+	}
+
+	if config.AppEnv == "production" && (config.CorsOrigins == "" || config.CorsOrigins == "*") {
+		// Don't crash; the CORS middleware disables wildcard in production and
+		// falls back to the built-in trusted origin list.
+		log.Printf("WARNING: CORS_ALLOW_ORIGINS is empty or '*' in production; wildcard is disabled and only built-in trusted origins will be allowed.")
 	}
 
 	return config, nil

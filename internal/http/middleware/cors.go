@@ -31,7 +31,9 @@ func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 		}
 	}
 
-	allowAll := cfg.CorsOrigins == "*" || cfg.CorsOrigins == ""
+	// Never allow wildcard origins in production (defense-in-depth; config
+	// validation already rejects this, but guard here too).
+	allowAll := (cfg.CorsOrigins == "*" || cfg.CorsOrigins == "") && cfg.AppEnv != "production"
 
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")

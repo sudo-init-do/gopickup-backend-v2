@@ -3,6 +3,7 @@ package db
 import (
 	"gopickup/internal/models"
 	"log"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,10 +11,28 @@ import (
 	"gorm.io/gorm"
 )
 
-// SeedDeveloperAccounts runs automatically on startup to ensure a dev/admin account exists.
+// SeedDeveloperAccounts ensures an admin account exists.
+//
+// It NEVER resets an existing account's password or role (that would let a
+// committed default password override an operator-changed one on every boot).
+// Credentials come from ADMIN_EMAIL/ADMIN_PASSWORD. In production those env
+// vars are required; outside production a local-only default is used so dev
+// setups still work out of the box.
 func SeedDeveloperAccounts(db *gorm.DB) {
-	createDevAccount(db, "admin@gopickup.com.ng", "Admin@2026!", models.RoleAdmin, nil)
-	createDevAccount(db, "admin2@gopickup.com.ng", "Admin@2026!", models.RoleAdmin, nil)
+	email := os.Getenv("ADMIN_EMAIL")
+	password := os.Getenv("ADMIN_PASSWORD")
+
+	if email == "" || password == "" {
+		if os.Getenv("APP_ENV") == "production" {
+			log.Println("Admin seeding skipped: set ADMIN_EMAIL and ADMIN_PASSWORD to seed an admin in production.")
+			return
+		}
+		// Local development fallback only.
+		email = "admin@gopickup.local"
+		password = "ChangeMe123!"
+	}
+
+	createDevAccount(db, email, password, models.RoleAdmin, nil)
 }
 
 func createDevAccount(db *gorm.DB, email, password string, role models.UserRole, profileSetup func(uuid.UUID)) {
@@ -21,16 +40,8 @@ func createDevAccount(db *gorm.DB, email, password string, role models.UserRole,
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
 	if err := db.Where("email = ?", email).First(&user).Error; err == nil {
-		// Account exists. Force upgrade role and reset password to ensure it works.
-		user.Role = role
-		user.PasswordHash = string(hashedPassword)
-		db.Save(&user)
-
-		log.Printf("Forced admin role and reset password for: %s", email)
-
-		if profileSetup != nil {
-			profileSetup(user.ID)
-		}
+		// Account already exists — leave its password and role untouched.
+		log.Printf("Admin account already exists, leaving credentials unchanged: %s", email)
 		return
 	}
 
