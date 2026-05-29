@@ -245,3 +245,22 @@ func (h *OrderHandler) ConfirmPayment(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, o)
 }
+
+// ClientDeleteOrder permanently removes a client's own non-active order.
+func (h *OrderHandler) ClientDeleteOrder(c *gin.Context) {
+	userIDInf, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	if err := h.service.ClientDeleteOrder(userIDInf.(uuid.UUID), orderID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Order deleted"})
+}

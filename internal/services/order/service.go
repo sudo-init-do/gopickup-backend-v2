@@ -31,9 +31,9 @@ type CheckoutRequest struct {
 }
 
 type CheckoutResponse struct {
-	Order            *models.Order `json:"order"`
-	WhatsAppURL      string        `json:"whatsapp_url"`       // Always set — opens GoPickup support chat
-	SupportPhone     string        `json:"support_phone"`      // GoPickup support WhatsApp number
+	Order        *models.Order `json:"order"`
+	WhatsAppURL  string        `json:"whatsapp_url"`  // Always set — opens GoPickup support chat
+	SupportPhone string        `json:"support_phone"` // GoPickup support WhatsApp number
 }
 
 type OrderService struct {
@@ -211,7 +211,7 @@ func (s *OrderService) ConfirmPayment(userID uuid.UUID, orderID uuid.UUID) (*mod
 	if err := db.GetDB().First(&o, "id = ?", orderID).Error; err != nil {
 		return nil, err
 	}
-	
+
 	// Only vendor or admin can confirm
 	if o.VendorID != userID {
 		// Check for admin role separately if needed, but for now we assume role check is in handler
@@ -225,10 +225,10 @@ func (s *OrderService) ConfirmPayment(userID uuid.UUID, orderID uuid.UUID) (*mod
 	if err := db.GetDB().Save(&o).Error; err != nil {
 		return nil, err
 	}
-	
+
 	s.audit.Log(userID, "PAYMENT_CONFIRMED", "order", o.ID, nil)
 	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
-	
+
 	return &o, nil
 }
 
@@ -449,4 +449,45 @@ func (s *OrderService) DriverAcceptLoad(driverID uuid.UUID, orderID uuid.UUID) (
 	s.audit.Log(driverID, "DRIVER_ACCEPTED_LOAD", "order", o.ID, nil)
 	notification.GetService().NotifyOrderStatusUpdate(o.ID, o.Status, o.ClientID, o.VendorID, o.DriverID)
 	return &o, nil
+}
+
+// ClientDeleteOrder permanently removes a client's own order. Only non-active
+// orders (pending, cancelled, delivered) can be deleted; active orders must run
+// their course. Pending orders restore reserved stock first.
+func (s *OrderService) ClientDeleteOrder(clientID uuid.UUID, orderID uuid.UUID) error {
+	err := db.GetDB().Transaction(func(tx *gorm.DB) error {
+		var o models.Order
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&o, "id = ?", orderID).Error; err != nil {
+			return err
+		}
+		if o.ClientID != clientID {
+			return errors.New("forbidden")
+		}
+		switch o.Status {
+		case models.OrderPending, models.OrderCancelled, models.OrderDelivered:
+			// deletable
+		default:
+			return errors.New("cannot delete an active order; cancel it first")
+		}
+		if o.Status == models.OrderPending {
+			if err := s.restoreStockTx(tx, o.ID); err != nil {
+				return err
+			}
+		}
+		if err := tx.Where("order_id = ?", orderID).Delete(&models.Bid{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("order_id = ?", orderID).Delete(&models.OrderItem{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Delete(&models.Order{}, "id = ?", orderID).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	s.audit.Log(clientID, "ORDER_DELETED", "order", orderID, nil)
+	return nil
 }

@@ -189,6 +189,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			{
 				clientGroup.POST("/checkout", orderH.Checkout)
 				clientGroup.PATCH("/:id/cancel", orderH.ClientCancelOrder)
+				// Permanently remove a non-active order from the client's history
+				clientGroup.DELETE("/:id", orderH.ClientDeleteOrder)
 				// "I Have Made Payment" — client self-reports off-platform payment
 				clientGroup.POST("/:id/payment-made", orderH.ClientReportPaymentMade)
 			}
