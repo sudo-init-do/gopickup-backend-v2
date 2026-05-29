@@ -28,6 +28,20 @@ type Config struct {
 	RedisURL               string
 	DefaultProductImage    string
 	WhatsAppSupportNumber  string // e.g. 2348012345678 (no + prefix)
+
+	// Cloudflare R2 object storage (for durable image uploads). When all of
+	// these are set, uploads go to R2 instead of the ephemeral local disk.
+	R2AccountID       string
+	R2AccessKeyID     string
+	R2SecretAccessKey string
+	R2Bucket          string
+	R2PublicBaseURL   string // public base URL, e.g. https://cdn.gopickup.com.ng
+}
+
+// R2Enabled reports whether all required R2 settings are present.
+func (c *Config) R2Enabled() bool {
+	return c.R2AccountID != "" && c.R2AccessKeyID != "" &&
+		c.R2SecretAccessKey != "" && c.R2Bucket != "" && c.R2PublicBaseURL != ""
 }
 
 func LoadConfig() (*Config, error) {
@@ -55,6 +69,12 @@ func LoadConfig() (*Config, error) {
 		RedisURL:              getEnv("REDIS_URL", "redis://localhost:6379/0"),
 		DefaultProductImage:   getEnv("DEFAULT_PRODUCT_IMAGE", "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&q=80"),
 		WhatsAppSupportNumber: getEnv("WHATSAPP_SUPPORT_NUMBER", "2348087042206"),
+
+		R2AccountID:       getEnv("R2_ACCOUNT_ID", ""),
+		R2AccessKeyID:     getEnv("R2_ACCESS_KEY_ID", ""),
+		R2SecretAccessKey: getEnv("R2_SECRET_ACCESS_KEY", ""),
+		R2Bucket:          getEnv("R2_BUCKET", getEnv("R2_BUCKET_NAME", "")),
+		R2PublicBaseURL:   getEnv("R2_PUBLIC_BASE_URL", ""),
 	}
 
 	// Production logging
