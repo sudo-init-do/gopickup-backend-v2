@@ -242,6 +242,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				adminGroup.GET("/users/recent", adminH.GetRecentUsers)
 				adminGroup.GET("/stats", adminH.GetStats)
 				adminGroup.GET("/orders", adminH.GetOrders)
+				adminGroup.DELETE("/orders/:id", adminH.DeleteOrder)
 				adminGroup.POST("/products", adminH.CreateProduct)
 				adminGroup.DELETE("/products/:id", adminH.DeleteProduct)
 				adminGroup.DELETE("/users/:id", adminH.DeleteUser)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AdminService struct {
@@ -48,14 +49,14 @@ func (s *AdminService) GetRecentUsers(limit int) ([]models.User, error) {
 }
 
 type PlatformStats struct {
-	TotalUsers     int64 `json:"total_users"`
-	TotalClients   int64 `json:"total_clients"`
-	TotalDrivers   int64 `json:"total_drivers"`
-	TotalVendors   int64 `json:"total_vendors"`
-	TotalOrders    int64 `json:"total_orders"`
-	PendingOrders  int64 `json:"pending_orders"`
-	ActiveOrders   int64 `json:"active_orders"`
-	TotalProducts  int64 `json:"total_products"`
+	TotalUsers    int64 `json:"total_users"`
+	TotalClients  int64 `json:"total_clients"`
+	TotalDrivers  int64 `json:"total_drivers"`
+	TotalVendors  int64 `json:"total_vendors"`
+	TotalOrders   int64 `json:"total_orders"`
+	PendingOrders int64 `json:"pending_orders"`
+	ActiveOrders  int64 `json:"active_orders"`
+	TotalProducts int64 `json:"total_products"`
 }
 
 func (s *AdminService) GetStats() (*PlatformStats, error) {
@@ -147,5 +148,47 @@ func (s *AdminService) DeleteUser(userID uuid.UUID) error {
 		return err
 	}
 
+	return nil
+}
+
+// DeleteOrder permanently removes an order regardless of status. Admin-only
+// operation; reserved stock is restored for pre-fulfillment statuses. Order
+// items and bids are cascaded.
+func (s *AdminService) DeleteOrder(orderID uuid.UUID) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var o models.Order
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&o, "id = ?", orderID).Error; err != nil {
+			return err
+		}
+		switch o.Status {
+		case models.OrderPending, models.OrderAwaitingPayment, models.OrderPaymentMade, models.OrderProcessing:
+			if err := s.restoreStockForOrderTx(tx, o.ID); err != nil {
+				return err
+			}
+		}
+		if err := tx.Where("order_id = ?", orderID).Delete(&models.Bid{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("order_id = ?", orderID).Delete(&models.OrderItem{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&models.Order{}, "id = ?", orderID).Error
+	})
+}
+
+// restoreStockForOrderTx adds order item quantities back to product stock.
+func (s *AdminService) restoreStockForOrderTx(tx *gorm.DB, orderID uuid.UUID) error {
+	var items []models.OrderItem
+	if err := tx.Where("order_id = ?", orderID).Find(&items).Error; err != nil {
+		return err
+	}
+	for _, it := range items {
+		if err := tx.Model(&models.Product{}).
+			Where("id = ?", it.ProductID).
+			Update("stock_quantity", gorm.Expr("stock_quantity + ?", it.Quantity)).
+			Error; err != nil {
+			return err
+		}
+	}
 	return nil
 }
