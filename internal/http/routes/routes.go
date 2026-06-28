@@ -55,8 +55,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	productService := product.NewProductService(auditService, db.GetRedis(), cfg)
 	orderService := order.NewOrderService(auditService, cfg)
 	driverService := driver.NewDriverService(auditService, cfg)
-	loadService := load.NewLoadService(auditService)
 	notifService := notification.NewNotificationService(db.GetDB())
+	loadService := load.NewLoadService(auditService, notifService)
 	chatService := chat.NewChatService(db.GetDB(), notifService, auditService)
 	walletService := wallet.NewWalletService(db.GetDB())
 	adminService := admin.NewAdminService(db.GetDB())
@@ -228,6 +228,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			driverLoadGroup.Use(middleware.RoleMiddleware(string(models.RoleDriver)))
 			{
 				driverLoadGroup.GET("/available", loadH.ListAvailableLoads)
+				driverLoadGroup.GET("/assigned", loadH.GetAssignedLoads)
 				driverLoadGroup.POST("/:id/bid", loadH.PlaceLoadBid)
 				driverLoadGroup.PATCH("/:id/status", loadH.UpdateLoadStatus)
 			}

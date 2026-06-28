@@ -2,9 +2,12 @@ package load
 
 import (
 	"errors"
+	"time"
+
 	"gopickup/internal/db"
 	"gopickup/internal/models"
 	"gopickup/internal/services/audit"
+	"gopickup/internal/services/notification"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -13,10 +16,11 @@ import (
 
 type LoadService struct {
 	audit *audit.AuditService
+	notif *notification.NotificationService
 }
 
-func NewLoadService(audit *audit.AuditService) *LoadService {
-	return &LoadService{audit: audit}
+func NewLoadService(audit *audit.AuditService, notif *notification.NotificationService) *LoadService {
+	return &LoadService{audit: audit, notif: notif}
 }
 
 // --- DTOs ---
@@ -33,6 +37,7 @@ type CreateLoadRequest struct {
 	DeliveryLat     *float64 `json:"delivery_lat"`
 	DeliveryLng     *float64 `json:"delivery_lng"`
 	BudgetAmount    *float64 `json:"budget_amount"`
+	ScheduledAt     *time.Time `json:"scheduled_at"`
 }
 
 type PlaceLoadBidRequest struct {
@@ -57,6 +62,7 @@ func (s *LoadService) CreateLoad(clientID uuid.UUID, req CreateLoadRequest) (*mo
 		DeliveryLat:     req.DeliveryLat,
 		DeliveryLng:     req.DeliveryLng,
 		BudgetAmount:    req.BudgetAmount,
+		ScheduledAt:     req.ScheduledAt,
 		Status:          models.LoadOpen,
 	}
 
@@ -143,6 +149,9 @@ func (s *LoadService) AcceptLoadBid(clientID uuid.UUID, loadID uuid.UUID, bidID 
 		return nil, err
 	}
 	s.audit.Log(clientID, "LOAD_BID_ACCEPTED", "load", loadID, nil)
+	if s.notif != nil {
+		s.notif.NotifyLoadStatusUpdate(loadID, load.ClientID, load.DriverID, models.LoadAssigned)
+	}
 	return &load, nil
 }
 
@@ -163,7 +172,25 @@ func (s *LoadService) CancelLoad(clientID uuid.UUID, loadID uuid.UUID) (*models.
 		return nil, err
 	}
 	s.audit.Log(clientID, "LOAD_CANCELLED", "load", loadID, nil)
+	if s.notif != nil {
+		s.notif.NotifyLoadStatusUpdate(loadID, load.ClientID, load.DriverID, models.LoadCancelled)
+	}
 	return &load, nil
+}
+
+// ListAssignedLoads returns loads currently assigned to (and in progress for)
+// this driver, used by the driver app to reach the live tracking / status UI.
+func (s *LoadService) ListAssignedLoads(driverID uuid.UUID) ([]models.Load, error) {
+	var loads []models.Load
+	err := db.GetDB().
+		Where("driver_id = ? AND status IN ?", driverID,
+			[]models.LoadStatus{models.LoadAssigned, models.LoadPickedUp}).
+		Order("created_at DESC").
+		Find(&loads).Error
+	if err != nil {
+		return nil, err
+	}
+	return loads, nil
 }
 
 // --- Driver Methods ---
@@ -214,6 +241,15 @@ func (s *LoadService) PlaceLoadBid(driverID uuid.UUID, loadID uuid.UUID, req Pla
 	}
 
 	s.audit.Log(driverID, "LOAD_BID_PLACED", "load", loadID, nil)
+
+	if s.notif != nil {
+		driverName := "A driver"
+		var profile models.DriverProfile
+		if err := db.GetDB().Select("full_name").First(&profile, "user_id = ?", driverID).Error; err == nil && profile.FullName != "" {
+			driverName = profile.FullName
+		}
+		s.notif.NotifyLoadBid(load.ClientID, loadID, bid.ID, driverID, bid.Amount, driverName)
+	}
 	return &bid, nil
 }
 
@@ -246,5 +282,8 @@ func (s *LoadService) UpdateLoadStatus(driverID uuid.UUID, loadID uuid.UUID, sta
 		return nil, err
 	}
 	s.audit.Log(driverID, "LOAD_STATUS_UPDATED", "load", loadID, map[string]interface{}{"status": status})
+	if s.notif != nil {
+		s.notif.NotifyLoadStatusUpdate(loadID, load.ClientID, load.DriverID, status)
+	}
 	return &load, nil
 }

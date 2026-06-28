@@ -42,6 +42,7 @@ type Load struct {
 	DeliveryLng     *float64   `json:"delivery_lng,omitempty"`
 	BudgetAmount    *float64   `gorm:"type:decimal(10,2)" json:"budget_amount,omitempty"` // Client's suggested budget
 	AgreedAmount    *float64   `gorm:"type:decimal(10,2)" json:"agreed_amount,omitempty"` // Accepted bid amount
+	ScheduledAt     *time.Time `json:"scheduled_at,omitempty"`                            // Requested delivery date/time (Post Load)
 	Status          LoadStatus `gorm:"type:varchar(30);not null;default:'open';index" json:"status"`
 
 	Client   *User      `gorm:"foreignKey:ClientID" json:"client,omitempty"`

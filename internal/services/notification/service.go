@@ -188,6 +188,48 @@ func (s *NotificationService) NotifyDriverMoved(orderID uuid.UUID, lat, lng floa
 	})
 }
 
+// --- Loads system (Book Driver / Post Load) ---
+
+// NotifyLoadBid tells a client (in their private room) that a driver bid on
+// their load, and pushes an FCM notification.
+func (s *NotificationService) NotifyLoadBid(clientID, loadID, bidID, driverID uuid.UUID, amount float64, driverName string) {
+	s.BroadcastToRoom(fmt.Sprintf("user:%s", clientID.String()), "load_bid", map[string]interface{}{
+		"load_id":     loadID,
+		"bid_id":      bidID,
+		"driver_id":   driverID,
+		"amount":      amount,
+		"driver_name": driverName,
+	})
+	s.SendNotification(clientID, "New Bid", fmt.Sprintf("%s bid ₦%.0f on your delivery", driverName, amount), map[string]string{
+		"type":    "load_bid",
+		"load_id": loadID.String(),
+	})
+}
+
+// NotifyLoadStatusUpdate broadcasts a load status change to the load room and
+// to the client and (if assigned) driver private rooms so the UI stays live.
+func (s *NotificationService) NotifyLoadStatusUpdate(loadID, clientID uuid.UUID, driverID *uuid.UUID, status models.LoadStatus) {
+	payload := map[string]interface{}{
+		"load_id": loadID,
+		"status":  status,
+	}
+	s.BroadcastToRoom(fmt.Sprintf("load:%s", loadID.String()), "load_status_updated", payload)
+	s.BroadcastToRoom(fmt.Sprintf("user:%s", clientID.String()), "load_status_updated", payload)
+	if driverID != nil {
+		s.BroadcastToRoom(fmt.Sprintf("user:%s", driverID.String()), "load_status_updated", payload)
+	}
+}
+
+// NotifyDriverMovedLoad relays a driver's live position to the load room.
+func (s *NotificationService) NotifyDriverMovedLoad(loadID uuid.UUID, lat, lng float64) {
+	s.BroadcastToRoom(fmt.Sprintf("load:%s", loadID.String()), "driver_moved", map[string]interface{}{
+		"load_id": loadID,
+		"lat":     lat,
+		"lng":     lng,
+		"ts":      time.Now(),
+	})
+}
+
 func (s *NotificationService) NotifyNewMessage(chatID uuid.UUID, senderID uuid.UUID, content string, recipientIDs []uuid.UUID) {
 	payload := map[string]interface{}{
 		"chat_id":   chatID,

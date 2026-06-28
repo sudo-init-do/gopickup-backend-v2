@@ -26,9 +26,10 @@ import (
 )
 
 var (
-	lastLocationUpdate = make(map[uuid.UUID]time.Time)
-	lastChatMessage    = make(map[uuid.UUID]time.Time)
-	rateLimitMutex     sync.Mutex
+	lastLocationUpdate     = make(map[uuid.UUID]time.Time)
+	lastLoadLocationUpdate = make(map[uuid.UUID]time.Time)
+	lastChatMessage        = make(map[uuid.UUID]time.Time)
+	rateLimitMutex         sync.Mutex
 )
 
 // checkRateLimit returns true if action is allowed, false if limited
@@ -253,6 +254,10 @@ func (h *Handler) handleMessage(client *notification.Client, userID uuid.UUID, m
 		h.handleJoinOrderRoom(client, userID, event.Payload)
 	case "leave_order_room":
 		h.handleLeaveOrderRoom(client, userID, event.Payload)
+	case "join_load_room":
+		h.handleJoinLoadRoom(client, userID, event.Payload)
+	case "leave_load_room":
+		h.handleLeaveLoadRoom(client, userID, event.Payload)
 	case "join_chat_room":
 		h.handleJoinChatRoom(client, userID, event.Payload)
 	case "leave_chat_room":
@@ -307,6 +312,72 @@ func (h *Handler) handleLeaveOrderRoom(client *notification.Client, userID uuid.
 	h.notifService.GetHub().Unsubscribe(client, fmt.Sprintf("order:%s", p.OrderID))
 }
 
+func (h *Handler) handleJoinLoadRoom(client *notification.Client, userID uuid.UUID, payload json.RawMessage) {
+	var p struct {
+		LoadID string `json:"load_id"`
+	}
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return
+	}
+
+	var load models.Load
+	if err := h.db.First(&load, "id = ?", p.LoadID).Error; err != nil {
+		return
+	}
+
+	// Authorize: the load's client or its assigned driver may watch it.
+	isAuthorized := load.ClientID == userID ||
+		(load.DriverID != nil && *load.DriverID == userID)
+	if isAuthorized {
+		h.notifService.GetHub().Subscribe(client, fmt.Sprintf("load:%s", p.LoadID))
+	}
+}
+
+func (h *Handler) handleLeaveLoadRoom(client *notification.Client, userID uuid.UUID, payload json.RawMessage) {
+	var p struct {
+		LoadID string `json:"load_id"`
+	}
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return
+	}
+	h.notifService.GetHub().Unsubscribe(client, fmt.Sprintf("load:%s", p.LoadID))
+}
+
+// handleDriverLocationUpdateLoad relays the assigned driver's GPS for a load to
+// the load room. Validates ownership + status and rate-limits to 1/5s.
+func (h *Handler) handleDriverLocationUpdateLoad(userID uuid.UUID, loadIDStr string, lat, lng float64) {
+	loadID, err := uuid.Parse(loadIDStr)
+	if err != nil {
+		return
+	}
+
+	var load models.Load
+	if err := h.db.First(&load, "id = ?", loadID).Error; err != nil {
+		return
+	}
+
+	// Only the assigned driver may stream position.
+	if load.DriverID == nil || *load.DriverID != userID {
+		return
+	}
+	// Only while the delivery is in motion (on the way to pickup or to drop-off).
+	if load.Status != models.LoadAssigned && load.Status != models.LoadPickedUp {
+		return
+	}
+
+	// Rate limit: 5 seconds (separate bucket from the order location path).
+	if !h.checkRateLimit(userID, 5*time.Second, "location_load", lastLoadLocationUpdate) {
+		return
+	}
+
+	// Persist last-known position for the driver profile.
+	if err := h.driverService.UpdateLocation(userID, lat, lng); err != nil {
+		log.Printf("UpdateLocation (load) failed: %v", err)
+	}
+
+	h.notifService.NotifyDriverMovedLoad(loadID, lat, lng)
+}
+
 func (h *Handler) handleJoinChatRoom(client *notification.Client, userID uuid.UUID, payload json.RawMessage) {
 	var p struct {
 		ChatID string `json:"chat_id"`
@@ -359,10 +430,17 @@ func (h *Handler) handleLeaveChatRoom(client *notification.Client, userID uuid.U
 func (h *Handler) handleDriverLocationUpdate(client *notification.Client, userID uuid.UUID, payload json.RawMessage) {
 	var p struct {
 		OrderID string  `json:"order_id"`
+		LoadID  string  `json:"load_id"`
 		Lat     float64 `json:"lat"`
 		Lng     float64 `json:"lng"`
 	}
 	if err := json.Unmarshal(payload, &p); err != nil {
+		return
+	}
+
+	// A load_id-carrying update is a Book Driver delivery; route to the load relay.
+	if p.LoadID != "" {
+		h.handleDriverLocationUpdateLoad(userID, p.LoadID, p.Lat, p.Lng)
 		return
 	}
 

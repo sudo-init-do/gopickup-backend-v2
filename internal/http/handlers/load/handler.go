@@ -129,6 +129,18 @@ func (h *LoadHandler) ListAvailableLoads(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": loads, "total": count})
 }
 
+// GetAssignedLoads godoc
+// GET /loads/assigned — loads currently assigned to this driver (in progress).
+func (h *LoadHandler) GetAssignedLoads(c *gin.Context) {
+	driverID := c.MustGet("userID").(uuid.UUID)
+	loads, err := h.service.ListAssignedLoads(driverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": loads})
+}
+
 // PlaceLoadBid godoc
 // POST /loads/:id/bid
 func (h *LoadHandler) PlaceLoadBid(c *gin.Context) {
