@@ -3,6 +3,7 @@ package middleware
 import (
 	"gopickup/internal/models"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,9 +17,11 @@ func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 			return
 		}
 
-		userRole := role.(string)
+		// Compare case-insensitively so any historic casing drift in the stored
+		// role (e.g. "Client" vs "client") doesn't lock a user out.
+		userRole := strings.ToLower(strings.TrimSpace(role.(string)))
 		for _, allowed := range allowedRoles {
-			if userRole == allowed {
+			if userRole == strings.ToLower(strings.TrimSpace(allowed)) {
 				c.Next()
 				return
 			}

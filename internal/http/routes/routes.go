@@ -198,9 +198,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			// Global Protected Upload Route
 			protected.POST("/upload", uploadH.UploadFile)
 
-			// Client Load Routes
+			// Client Load Routes (admins may also post/manage loads on behalf of customers)
 			clientLoadGroup := protected.Group("/loads")
-			clientLoadGroup.Use(middleware.RoleMiddleware(string(models.RoleClient)))
+			clientLoadGroup.Use(middleware.RoleMiddleware(string(models.RoleClient), string(models.RoleAdmin)))
 			{
 				clientLoadGroup.POST("", loadH.CreateLoad)
 				clientLoadGroup.GET("/my", loadH.ListMyLoads)

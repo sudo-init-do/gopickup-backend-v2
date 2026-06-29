@@ -107,9 +107,14 @@ func (s *AuthService) Register(req RegisterRequest) (string, *MeResponse, error)
 			return "", nil, err
 		}
 	} else {
-		// Update existing unverified user
+		// Update existing unverified user. Normalise the role and never blank it
+		// out — fall back to client (or the existing role) when none is sent.
 		user.PasswordHash = hashedPassword
-		user.Role = models.UserRole(req.Role)
+		if req.Role != "" {
+			user.Role = models.UserRole(strings.ToLower(strings.TrimSpace(req.Role)))
+		} else if user.Role == "" {
+			user.Role = models.RoleClient
+		}
 		user.OTPCode = otp
 		user.OTPExpiresAt = time.Now().Add(10 * time.Minute)
 		user.UpdatedAt = time.Now()

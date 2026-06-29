@@ -33,13 +33,18 @@ type Load struct {
 	Title           string     `gorm:"not null" json:"title"`
 	Description     string     `gorm:"type:text" json:"description"`
 	GoodsType       string     `gorm:"not null" json:"goods_type"`       // e.g. "Cement", "Furniture"
+	EquipmentType   string     `json:"equipment_type"`                    // Truck, Van, Pickup/Hilux, Tricycle, Bike
+	LoadRequirement string     `json:"load_requirement"`                  // "full" | "partial"
 	Weight          *float64   `json:"weight,omitempty"`                  // in kg
-	PickupAddress   string     `gorm:"not null" json:"pickup_address"`
+	LengthFt        *float64   `json:"length_ft,omitempty"`               // requested vehicle length (ft)
+	PickupAddress   string     `gorm:"not null" json:"pickup_address"`    // "City, State"
 	PickupLat       *float64   `json:"pickup_lat,omitempty"`
 	PickupLng       *float64   `json:"pickup_lng,omitempty"`
-	DeliveryAddress string     `gorm:"not null" json:"delivery_address"`
+	PickupPin       string     `json:"pickup_pin"`                        // Google Maps link / Plus code for exact navigation
+	DeliveryAddress string     `gorm:"not null" json:"delivery_address"`  // "City, State"
 	DeliveryLat     *float64   `json:"delivery_lat,omitempty"`
 	DeliveryLng     *float64   `json:"delivery_lng,omitempty"`
+	DropoffPin      string     `json:"dropoff_pin"`                       // Google Maps link / Plus code for exact navigation
 	BudgetAmount    *float64   `gorm:"type:decimal(10,2)" json:"budget_amount,omitempty"` // Client's suggested budget
 	AgreedAmount    *float64   `gorm:"type:decimal(10,2)" json:"agreed_amount,omitempty"` // Accepted bid amount
 	ScheduledAt     *time.Time `json:"scheduled_at,omitempty"`                            // Requested delivery date/time (Post Load)

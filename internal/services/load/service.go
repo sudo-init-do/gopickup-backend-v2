@@ -26,17 +26,22 @@ func NewLoadService(audit *audit.AuditService, notif *notification.NotificationS
 // --- DTOs ---
 
 type CreateLoadRequest struct {
-	Title           string   `json:"title" binding:"required"`
-	Description     string   `json:"description"`
-	GoodsType       string   `json:"goods_type" binding:"required"`
-	Weight          *float64 `json:"weight"`
-	PickupAddress   string   `json:"pickup_address" binding:"required"`
-	PickupLat       *float64 `json:"pickup_lat"`
-	PickupLng       *float64 `json:"pickup_lng"`
-	DeliveryAddress string   `json:"delivery_address" binding:"required"`
-	DeliveryLat     *float64 `json:"delivery_lat"`
-	DeliveryLng     *float64 `json:"delivery_lng"`
-	BudgetAmount    *float64 `json:"budget_amount"`
+	Title           string     `json:"title" binding:"required"`
+	Description     string     `json:"description"`
+	GoodsType       string     `json:"goods_type" binding:"required"`
+	EquipmentType   string     `json:"equipment_type"`
+	LoadRequirement string     `json:"load_requirement"`
+	Weight          *float64   `json:"weight"`
+	LengthFt        *float64   `json:"length_ft"`
+	PickupAddress   string     `json:"pickup_address" binding:"required"`
+	PickupLat       *float64   `json:"pickup_lat"`
+	PickupLng       *float64   `json:"pickup_lng"`
+	PickupPin       string     `json:"pickup_pin"`
+	DeliveryAddress string     `json:"delivery_address" binding:"required"`
+	DeliveryLat     *float64   `json:"delivery_lat"`
+	DeliveryLng     *float64   `json:"delivery_lng"`
+	DropoffPin      string     `json:"dropoff_pin"`
+	BudgetAmount    *float64   `json:"budget_amount"`
 	ScheduledAt     *time.Time `json:"scheduled_at"`
 }
 
@@ -54,13 +59,18 @@ func (s *LoadService) CreateLoad(clientID uuid.UUID, req CreateLoadRequest) (*mo
 		Title:           req.Title,
 		Description:     req.Description,
 		GoodsType:       req.GoodsType,
+		EquipmentType:   req.EquipmentType,
+		LoadRequirement: req.LoadRequirement,
 		Weight:          req.Weight,
+		LengthFt:        req.LengthFt,
 		PickupAddress:   req.PickupAddress,
 		PickupLat:       req.PickupLat,
 		PickupLng:       req.PickupLng,
+		PickupPin:       req.PickupPin,
 		DeliveryAddress: req.DeliveryAddress,
 		DeliveryLat:     req.DeliveryLat,
 		DeliveryLng:     req.DeliveryLng,
+		DropoffPin:      req.DropoffPin,
 		BudgetAmount:    req.BudgetAmount,
 		ScheduledAt:     req.ScheduledAt,
 		Status:          models.LoadOpen,
