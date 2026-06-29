@@ -96,6 +96,25 @@ func (s *AdminService) GetOrders() ([]models.Order, error) {
 	return orders, nil
 }
 
+// GetLoads returns every load (Book Driver + Post Load requests) for the admin
+// console, newest first, with client/driver/bid details preloaded so the team
+// can call drivers to come bid.
+func (s *AdminService) GetLoads() ([]models.Load, error) {
+	var loads []models.Load
+	if err := s.db.
+		Order("created_at desc").
+		Preload("Client").
+		Preload("Client.ClientProfile").
+		Preload("Driver").
+		Preload("Driver.DriverProfile").
+		Preload("Bids").
+		Preload("Bids.Driver.DriverProfile").
+		Find(&loads).Error; err != nil {
+		return nil, err
+	}
+	return loads, nil
+}
+
 func (s *AdminService) AssignDriver(orderID uuid.UUID, driverID uuid.UUID, agreedPrice float64, deliveryFee float64) error {
 	var driver models.User
 	if err := s.db.Where("id = ? AND role = ?", driverID, models.RoleDriver).First(&driver).Error; err != nil {

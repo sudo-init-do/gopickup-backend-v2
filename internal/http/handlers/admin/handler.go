@@ -95,6 +95,17 @@ func (h *AdminHandler) GetOrders(c *gin.Context) {
 	c.JSON(http.StatusOK, orders)
 }
 
+// GetLoads godoc
+// GET /admin/loads — all driver-booking + post-load requests for the admin.
+func (h *AdminHandler) GetLoads(c *gin.Context) {
+	loads, err := h.adminService.GetLoads()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch loads"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": loads})
+}
+
 // CreateProduct godoc
 // @Summary Admin create product
 // @Description Create a product for a specific vendor as an admin
