@@ -95,7 +95,7 @@ func (s *LoadService) ListClientLoads(clientID uuid.UUID, page, limit int) ([]mo
 	var count int64
 	q := db.GetDB().Model(&models.Load{}).Where("client_id = ?", clientID).Order("created_at DESC")
 	q.Count(&count)
-	if err := q.Preload("Bids.Driver.DriverProfile").Offset(offset).Limit(limit).Find(&loads).Error; err != nil {
+	if err := q.Preload("Driver.DriverProfile").Preload("Bids.Driver.DriverProfile").Offset(offset).Limit(limit).Find(&loads).Error; err != nil {
 		return nil, 0, err
 	}
 	return loads, count, nil
@@ -104,7 +104,7 @@ func (s *LoadService) ListClientLoads(clientID uuid.UUID, page, limit int) ([]mo
 // GetLoad returns a specific load if the requester is the client owner.
 func (s *LoadService) GetLoad(clientID uuid.UUID, loadID uuid.UUID) (*models.Load, error) {
 	var load models.Load
-	if err := db.GetDB().Preload("Bids.Driver.DriverProfile").First(&load, "id = ?", loadID).Error; err != nil {
+	if err := db.GetDB().Preload("Driver.DriverProfile").Preload("Bids.Driver.DriverProfile").First(&load, "id = ?", loadID).Error; err != nil {
 		return nil, errors.New("load not found")
 	}
 	if load.ClientID != clientID {
@@ -193,6 +193,7 @@ func (s *LoadService) CancelLoad(clientID uuid.UUID, loadID uuid.UUID) (*models.
 func (s *LoadService) ListAssignedLoads(driverID uuid.UUID) ([]models.Load, error) {
 	var loads []models.Load
 	err := db.GetDB().
+		Preload("Driver.DriverProfile").
 		Where("driver_id = ? AND status IN ?", driverID,
 			[]models.LoadStatus{models.LoadAssigned, models.LoadPickedUp}).
 		Order("created_at DESC").
