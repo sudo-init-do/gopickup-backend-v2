@@ -250,6 +250,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				adminGroup.DELETE("/users/:id", adminH.DeleteUser)
 				adminGroup.POST("/orders/assign-driver", adminH.AssignDriver)
 				adminGroup.PATCH("/orders/status", adminH.UpdateOrderStatus)
+				// Assign a driver / push status updates on Book Driver + Post Load requests.
+				adminGroup.POST("/loads/assign-driver", loadH.AdminAssignDriver)
+				adminGroup.PATCH("/loads/status", loadH.AdminUpdateStatus)
 				// Verify that client's off-platform payment was received → opens order to drivers
 				adminGroup.POST("/orders/:id/verify-payment", adminH.VerifyPayment)
 			}
