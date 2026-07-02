@@ -298,3 +298,81 @@ func (s *LoadService) UpdateLoadStatus(driverID uuid.UUID, loadID uuid.UUID, sta
 	}
 	return &load, nil
 }
+
+// --- Admin Methods ---
+
+// AdminAssignDriver lets an admin directly assign (or re-assign) a driver to a
+// load without the bidding flow — used from the "Driver Bookings & Loads"
+// console. Moves the load to `assigned`, records the agreed amount (falls back
+// to the load's budget), rejects any pending bids, and notifies the client and
+// driver so live tracking starts.
+func (s *LoadService) AdminAssignDriver(adminID, loadID, driverID uuid.UUID, amount *float64) (*models.Load, error) {
+	var driver models.User
+	if err := db.GetDB().Where("id = ? AND role = ?", driverID, models.RoleDriver).First(&driver).Error; err != nil {
+		return nil, errors.New("driver not found")
+	}
+
+	var load models.Load
+	if err := db.GetDB().First(&load, "id = ?", loadID).Error; err != nil {
+		return nil, errors.New("load not found")
+	}
+	if load.Status == models.LoadDelivered || load.Status == models.LoadCancelled {
+		return nil, errors.New("cannot assign a driver to a completed or cancelled load")
+	}
+
+	load.DriverID = &driverID
+	load.Status = models.LoadAssigned
+	if amount != nil {
+		load.AgreedAmount = amount
+	} else if load.AgreedAmount == nil {
+		load.AgreedAmount = load.BudgetAmount
+	}
+	if err := db.GetDB().Save(&load).Error; err != nil {
+		return nil, err
+	}
+
+	// Stop further bidding on a now-assigned load.
+	db.GetDB().Model(&models.LoadBid{}).
+		Where("load_id = ? AND status = ?", loadID, models.LoadBidPending).
+		Update("status", models.LoadBidRejected)
+
+	s.audit.Log(adminID, "LOAD_ADMIN_ASSIGNED", "load", loadID,
+		map[string]interface{}{"driver_id": driverID})
+	if s.notif != nil {
+		s.notif.NotifyLoadStatusUpdate(loadID, load.ClientID, &driverID, models.LoadAssigned)
+	}
+
+	db.GetDB().Preload("Driver.DriverProfile").Preload("Bids.Driver.DriverProfile").
+		First(&load, "id = ?", loadID)
+	return &load, nil
+}
+
+// AdminUpdateStatus lets an admin push a status update on any load (e.g. mark it
+// picked_up / delivered, or cancel it) and notifies the client and driver.
+func (s *LoadService) AdminUpdateStatus(adminID, loadID uuid.UUID, status models.LoadStatus) (*models.Load, error) {
+	switch status {
+	case models.LoadOpen, models.LoadAssigned, models.LoadPickedUp,
+		models.LoadDelivered, models.LoadCancelled:
+	default:
+		return nil, errors.New("invalid status")
+	}
+
+	var load models.Load
+	if err := db.GetDB().First(&load, "id = ?", loadID).Error; err != nil {
+		return nil, errors.New("load not found")
+	}
+
+	load.Status = status
+	if err := db.GetDB().Save(&load).Error; err != nil {
+		return nil, err
+	}
+	s.audit.Log(adminID, "LOAD_ADMIN_STATUS_UPDATED", "load", loadID,
+		map[string]interface{}{"status": status})
+	if s.notif != nil {
+		s.notif.NotifyLoadStatusUpdate(loadID, load.ClientID, load.DriverID, status)
+	}
+
+	db.GetDB().Preload("Driver.DriverProfile").Preload("Bids.Driver.DriverProfile").
+		First(&load, "id = ?", loadID)
+	return &load, nil
+}

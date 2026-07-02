@@ -190,3 +190,65 @@ func (h *LoadHandler) UpdateLoadStatus(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, load)
 }
+
+// --- Admin Handlers ---
+
+// AdminAssignDriver godoc
+// POST /admin/loads/assign-driver
+func (h *LoadHandler) AdminAssignDriver(c *gin.Context) {
+	adminID := c.MustGet("userID").(uuid.UUID)
+
+	var body struct {
+		LoadID       string   `json:"load_id" binding:"required"`
+		DriverID     string   `json:"driver_id" binding:"required"`
+		AgreedAmount *float64 `json:"agreed_amount"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	loadID, err := uuid.Parse(body.LoadID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid load ID"})
+		return
+	}
+	driverID, err := uuid.Parse(body.DriverID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid driver ID"})
+		return
+	}
+
+	load, err := h.service.AdminAssignDriver(adminID, loadID, driverID, body.AgreedAmount)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, load)
+}
+
+// AdminUpdateStatus godoc
+// PATCH /admin/loads/status
+func (h *LoadHandler) AdminUpdateStatus(c *gin.Context) {
+	adminID := c.MustGet("userID").(uuid.UUID)
+
+	var body struct {
+		LoadID string            `json:"load_id" binding:"required"`
+		Status models.LoadStatus `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	loadID, err := uuid.Parse(body.LoadID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid load ID"})
+		return
+	}
+
+	load, err := h.service.AdminUpdateStatus(adminID, loadID, body.Status)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, load)
+}
