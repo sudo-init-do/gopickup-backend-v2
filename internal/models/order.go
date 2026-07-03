@@ -73,6 +73,7 @@ type Order struct {
 	
 	Client             *User         `gorm:"foreignKey:ClientID" json:"client,omitempty"`
 	Vendor             VendorProfile `gorm:"foreignKey:VendorID" json:"vendor,omitempty"`
+	Driver             *User         `gorm:"foreignKey:DriverID" json:"driver,omitempty"`
 	Items []OrderItem `gorm:"foreignKey:OrderID" json:"items,omitempty"`
 	Bids  []Bid       `gorm:"foreignKey:OrderID" json:"bids,omitempty"`
 

@@ -263,7 +263,7 @@ func (s *OrderService) ListOrders(userID uuid.UUID, role models.UserRole, page, 
 	if err := q.Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
-	if err := q.Preload("Vendor").Preload("Items").Offset(offset).Limit(limit).Find(&orders).Error; err != nil {
+	if err := q.Preload("Vendor").Preload("Items").Preload("Driver.DriverProfile").Offset(offset).Limit(limit).Find(&orders).Error; err != nil {
 		return nil, 0, err
 	}
 	return orders, count, nil
@@ -272,7 +272,7 @@ func (s *OrderService) ListOrders(userID uuid.UUID, role models.UserRole, page, 
 // Get order detail if authorized. Includes items.
 func (s *OrderService) GetOrder(userID uuid.UUID, role models.UserRole, orderID uuid.UUID) (*models.Order, error) {
 	var o models.Order
-	if err := db.GetDB().Preload("Items").Preload("Vendor").Preload("Bids").First(&o, "id = ?", orderID).Error; err != nil {
+	if err := db.GetDB().Preload("Items").Preload("Vendor").Preload("Bids").Preload("Driver.DriverProfile").First(&o, "id = ?", orderID).Error; err != nil {
 		return nil, err
 	}
 	if role == models.RoleAdmin {
